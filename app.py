@@ -1,12 +1,13 @@
 """
 เว็บแอปพลิเคชันสำหรับจัดการและแก้ไขไฟล์ PDF ด้วย Streamlit และ pypdf (Pure Python 100%)
 รองรับ:
-1. เพิ่มข้อความใหม่แบบลากวางด้วยเมาส์ (Interactive Drag & Drop Text on PDF Page) วางตรงไหนก็ได้ตามต้องการ
-2. ไฮไลต์ข้อความ (Highlight Text) เลือกสีไฮไลต์ได้ และเพิ่มข้อความต่อท้ายในบรรทัดเดียวกันได้ทันที
-3. แก้ไขข้อความภายในหน้า PDF ได้โดยตรง (ทั้งแก้ไขรายบรรทัด และค้นหา/แทนที่)
-   รองรับภาษาไทยและภาษาอังกฤษโดยไม่ติดปัญหา DLL Blocked บน Windows
-4. เพิ่มหน้าเปล่า (Blank Page), แทรก/รวมไฟล์ PDF อื่น และลบหน้าที่ไม่ต้องการ
-5. ดูตัวอย่างไฟล์ PDF (Live Preview) และดาวน์โหลดไฟล์ PDF ที่แก้ไขแล้วผ่านเบราว์เซอร์ได้ทันที
+1. ระบบหลายฟอนต์ (Multi-Font Support): ตรวจจับฟอนต์ของเอกสาร PDF อัตโนมัติ, มีคลังฟอนต์ไทย/อังกฤษให้เลือกหลากหลาย
+   (TH Sarabun New, TH Sarabun Bold, TH Sarabun IT9, Leelawadee, Leelawadee Bold, Leelawadee UI, Tahoma)
+   และรองรับการอัปโหลดไฟล์ฟอนต์ .ttf เพิ่มเติมได้เอง (เช่น CSChatThai.ttf, Prompt.ttf, Kanit.ttf)
+2. เพิ่มข้อความใหม่แบบลากวางด้วยเมาส์ (Interactive Drag & Drop Text on PDF Page) เลือกฟอนต์แยกแต่ละกล่องได้
+3. ไฮไลต์ข้อความ (Highlight Text) เลือกสีไฮไลต์ได้ และเพิ่มข้อความต่อท้ายในบรรทัดเดียวกันได้ทันที
+4. แก้ไขข้อความภายในหน้า PDF ได้โดยตรง (ทั้งแก้ไขรายบรรทัด และค้นหา/แทนที่)
+5. เพิ่มหน้าเปล่า (Blank Page), แทรก/รวมไฟล์ PDF อื่น, ลบหน้าที่ไม่ต้องการ และดูตัวอย่าง PDF (PDF.js Live Preview)
 """
 
 import base64
@@ -47,6 +48,79 @@ APPEND_TEXT_COLORS: Dict[str, Tuple[float, float, float]] = {
     "🟢 สีเขียวเข้ม": (0.05, 0.50, 0.15),
 }
 
+# รายการฟอนต์มาตรฐานที่รองรับ (ค้นหาทั้งในโฟลเดอร์ fonts/ ของโปรเจกต์ และ C:/Windows/Fonts/)
+FONT_CATALOG: Dict[str, Dict[str, List[str]]] = {
+    "auto": {
+        "label": "🔄 อัตโนมัติ (จับคู่ตามฟอนต์เดิมของเอกสาร PDF)",
+        "paths": [],
+    },
+    "CSChatThai": {
+        "label": "🔤 CSChatThai (ซีเอส ชาติไทย - ตรงกับใบเสนอราคาต้นฉบับ 100%)",
+        "paths": [
+            "fonts/CSChatThai.ttf",
+            "CSChatThai.ttf",
+            "C:/Windows/Fonts/CSChatThai.ttf",
+        ],
+    },
+    "Leelawadee": {
+        "label": "🔤 Leelawadee (ลีลาวดี - มีหัวอ่านง่าย)",
+        "paths": [
+            "fonts/Leelawadee.ttf",
+            "C:/Windows/Fonts/leelawad.ttf",
+        ],
+    },
+    "LeelawadeeBold": {
+        "label": "🔤 Leelawadee Bold (ลีลาวดี ตัวหนา)",
+        "paths": [
+            "fonts/LeelawadeeBold.ttf",
+            "C:/Windows/Fonts/leelawdb.ttf",
+        ],
+    },
+    "LeelawadeeUI": {
+        "label": "🔤 Leelawadee UI (ลีลาวดี UI - ทันสมัย)",
+        "paths": [
+            "fonts/LeelawadeeUI.ttf",
+            "C:/Windows/Fonts/LeelawUI.ttf",
+        ],
+    },
+    "THSarabunNew": {
+        "label": "🔤 TH Sarabun New (สารบรรณนิว - เอกสารราชการ/มาตรฐาน)",
+        "paths": [
+            "fonts/THSarabunNew.ttf",
+            "C:/Windows/Fonts/THSarabunNew.ttf",
+        ],
+    },
+    "THSarabun": {
+        "label": "🔤 TH Sarabun (สารบรรณ ปกติ)",
+        "paths": [
+            "fonts/THSarabun.ttf",
+            "THSarabun.ttf",
+            "C:/Windows/Fonts/THSarabun.ttf",
+        ],
+    },
+    "THSarabunBold": {
+        "label": "🔤 TH Sarabun Bold (สารบรรณ ตัวหนา)",
+        "paths": [
+            "fonts/THSarabunBold.ttf",
+            "C:/Windows/Fonts/THSarabun Bold.ttf",
+        ],
+    },
+    "THSarabunIT9": {
+        "label": "🔤 TH Sarabun IT๙ (สารบรรณ ไอที 9)",
+        "paths": [
+            "fonts/THSarabunIT9.ttf",
+            "C:/Windows/Fonts/THSarabunIT๙.ttf",
+        ],
+    },
+    "Tahoma": {
+        "label": "🔤 Tahoma (ทาโฮมา - ใบเสนอราคา/ใบกำกับภาษี)",
+        "paths": [
+            "fonts/Tahoma.ttf",
+            "C:/Windows/Fonts/tahoma.ttf",
+        ],
+    },
+}
+
 
 def hex_to_rgb_float(hex_color: str) -> Tuple[float, float, float]:
     """แปลงสี Hex เช่น '#d11414' เป็น RGB (0.0 - 1.0)"""
@@ -61,141 +135,256 @@ def hex_to_rgb_float(hex_color: str) -> Tuple[float, float, float]:
 
 
 # ---------------------------------------------------------------------------
-# ส่วนจัดการฟอนต์ภาษาไทย TrueType (Pure Python - ไม่ใช้ไลบรารี C/DLL ภายนอก)
+# ส่วนจัดการหลายฟอนต์ TrueType (Multi-Font Pure Python Parser)
 # ---------------------------------------------------------------------------
 
-@st.cache_resource
-def load_windows_thai_ttf() -> Optional[Dict]:
+def parse_ttf_bytes(data: bytes, font_id: str) -> Optional[Dict]:
     """
-    อ่านไฟล์ฟอนต์ภาษาไทยมาตรฐานของ Windows (.ttf) ด้วย Pure Python (struct)
-    เพื่อใช้ฝังลงใน PDF กรณีผู้ใช้พิมพ์ตัวอักษรใหม่ที่ไม่มีในฟอนต์ย่อยของไฟล์ต้นฉบับ
+    วิเคราะห์ข้อมูลไบต์ของไฟล์ฟอนต์ TrueType (.ttf) ด้วย Pure Python (struct)
+    ดึงตาราง cmap, head, hhea, hmtx เพื่อคำนวณความกว้างและฝังลงใน PDF
     """
-    local_font = os.path.join(os.path.dirname(os.path.abspath(__file__)), "THSarabun.ttf")
-    candidates = [
-        local_font,
-        "THSarabun.ttf",
-        "C:/Windows/Fonts/LeelawUI.ttf",
-        "C:/Windows/Fonts/tahoma.ttf",
-        "C:/Windows/Fonts/THSarabun.ttf",
-        "C:/Windows/Fonts/leelawad.ttf",
-        "/usr/share/fonts/truetype/tlwg/Garuda.ttf",
-        "/usr/share/fonts/truetype/tlwg/Loma.ttf",
-        "/usr/share/fonts/truetype/noto/NotoSansThai-Regular.ttf",
-    ]
-    ttf_path = next((p for p in candidates if os.path.exists(p)), None)
-    if not ttf_path:
-        return None
-
-    with open(ttf_path, "rb") as f:
-        data = f.read()
-
-    num_tables = struct.unpack(">H", data[4:6])[0]
-    tables = {}
-    for i in range(num_tables):
-        tag = data[12 + i * 16 : 16 + i * 16].decode("ascii", errors="ignore")
-        checksum, offset, length = struct.unpack(
-            ">III", data[16 + i * 16 : 28 + i * 16]
-        )
-        tables[tag] = (offset, length)
-
-    if not all(k in tables for k in ("cmap", "head", "hhea", "hmtx")):
-        return None
-
-    upm = struct.unpack(">H", data[tables["head"][0] + 18 : tables["head"][0] + 20])[0]
-    nhm = struct.unpack(">H", data[tables["hhea"][0] + 34 : tables["hhea"][0] + 36])[0]
-    hmtx_off = tables["hmtx"][0]
-    widths = [
-        int(
-            round(
-                struct.unpack(">H", data[hmtx_off + 4 * i : hmtx_off + 4 * i + 2])[0]
-                * 1000.0
-                / upm
+    try:
+        if len(data) < 12:
+            return None
+        num_tables = struct.unpack(">H", data[4:6])[0]
+        tables = {}
+        for i in range(num_tables):
+            tag = data[12 + i * 16 : 16 + i * 16].decode("ascii", errors="ignore")
+            checksum, offset, length = struct.unpack(
+                ">III", data[16 + i * 16 : 28 + i * 16]
             )
+            tables[tag] = (offset, length)
+
+        if not all(k in tables for k in ("cmap", "head", "hhea", "hmtx")):
+            return None
+
+        upm = struct.unpack(
+            ">H", data[tables["head"][0] + 18 : tables["head"][0] + 20]
+        )[0]
+        nhm = struct.unpack(
+            ">H", data[tables["hhea"][0] + 34 : tables["hhea"][0] + 36]
+        )[0]
+        hmtx_off = tables["hmtx"][0]
+        widths = [
+            int(
+                round(
+                    struct.unpack(">H", data[hmtx_off + 4 * i : hmtx_off + 4 * i + 2])[
+                        0
+                    ]
+                    * 1000.0
+                    / upm
+                )
+            )
+            for i in range(nhm)
+        ]
+
+        cmap_off = tables["cmap"][0]
+        num_sub = struct.unpack(">H", data[cmap_off + 2 : cmap_off + 4])[0]
+        sub_off = None
+        for i in range(num_sub):
+            plat_id, enc_id, rel_off = struct.unpack(
+                ">HHI", data[cmap_off + 4 + i * 8 : cmap_off + 12 + i * 8]
+            )
+            if (plat_id == 3 and enc_id == 1) or plat_id == 0:
+                sub_off = cmap_off + rel_off
+                if plat_id == 3 and enc_id == 1:
+                    break
+
+        if sub_off is None:
+            return None
+
+        fmt = struct.unpack(">H", data[sub_off : sub_off + 2])[0]
+        if fmt != 4:
+            return None
+
+        _, _, seg_count_x2 = struct.unpack(">HHH", data[sub_off + 2 : sub_off + 8])
+        seg_count = seg_count_x2 // 2
+        end_codes = struct.unpack(
+            f">{seg_count}H", data[sub_off + 14 : sub_off + 14 + 2 * seg_count]
         )
-        for i in range(nhm)
-    ]
-
-    cmap_off = tables["cmap"][0]
-    num_sub = struct.unpack(">H", data[cmap_off + 2 : cmap_off + 4])[0]
-    sub_off = None
-    for i in range(num_sub):
-        plat_id, enc_id, rel_off = struct.unpack(
-            ">HHI", data[cmap_off + 4 + i * 8 : cmap_off + 12 + i * 8]
+        start_codes = struct.unpack(
+            f">{seg_count}H",
+            data[sub_off + 16 + 2 * seg_count : sub_off + 16 + 4 * seg_count],
         )
-        if (plat_id == 3 and enc_id == 1) or plat_id == 0:
-            sub_off = cmap_off + rel_off
-            if plat_id == 3 and enc_id == 1:
-                break
-
-    if sub_off is None:
-        return None
-
-    fmt = struct.unpack(">H", data[sub_off : sub_off + 2])[0]
-    if fmt != 4:
-        return None
-
-    _, _, seg_count_x2 = struct.unpack(">HHH", data[sub_off + 2 : sub_off + 8])
-    seg_count = seg_count_x2 // 2
-    end_codes = struct.unpack(
-        f">{seg_count}H", data[sub_off + 14 : sub_off + 14 + 2 * seg_count]
-    )
-    start_codes = struct.unpack(
-        f">{seg_count}H",
-        data[sub_off + 16 + 2 * seg_count : sub_off + 16 + 4 * seg_count],
-    )
-    id_deltas = struct.unpack(
-        f">{seg_count}h",
-        data[sub_off + 16 + 4 * seg_count : sub_off + 16 + 6 * seg_count],
-    )
-    ro_pos = sub_off + 16 + 6 * seg_count
-    id_range_offsets = struct.unpack(
-        f">{seg_count}H", data[ro_pos : ro_pos + 2 * seg_count]
-    )
-
-    char_to_gid: Dict[int, int] = {}
-    for i in range(seg_count):
-        sc, ec, delta, ro = (
-            start_codes[i],
-            end_codes[i],
-            id_deltas[i],
-            id_range_offsets[i],
+        id_deltas = struct.unpack(
+            f">{seg_count}h",
+            data[sub_off + 16 + 4 * seg_count : sub_off + 16 + 6 * seg_count],
         )
-        if sc == 0xFFFF:
-            continue
-        for code in range(sc, ec + 1):
-            if ro == 0:
-                gid = (code + delta) & 0xFFFF
-            else:
-                glyph_idx_addr = ro_pos + 2 * i + ro + 2 * (code - sc)
-                if glyph_idx_addr + 2 <= len(data):
-                    raw_gid = struct.unpack(
-                        ">H", data[glyph_idx_addr : glyph_idx_addr + 2]
-                    )[0]
-                    gid = (raw_gid + delta) & 0xFFFF if raw_gid != 0 else 0
+        ro_pos = sub_off + 16 + 6 * seg_count
+        id_range_offsets = struct.unpack(
+            f">{seg_count}H", data[ro_pos : ro_pos + 2 * seg_count]
+        )
+
+        char_to_gid: Dict[int, int] = {}
+        for i in range(seg_count):
+            sc, ec, delta, ro = (
+                start_codes[i],
+                end_codes[i],
+                id_deltas[i],
+                id_range_offsets[i],
+            )
+            if sc == 0xFFFF:
+                continue
+            for code in range(sc, ec + 1):
+                if ro == 0:
+                    gid = (code + delta) & 0xFFFF
                 else:
-                    gid = 0
-            if gid != 0:
-                char_to_gid[code] = gid
+                    glyph_idx_addr = ro_pos + 2 * i + ro + 2 * (code - sc)
+                    if glyph_idx_addr + 2 <= len(data):
+                        raw_gid = struct.unpack(
+                            ">H", data[glyph_idx_addr : glyph_idx_addr + 2]
+                        )[0]
+                        gid = (raw_gid + delta) & 0xFFFF if raw_gid != 0 else 0
+                    else:
+                        gid = 0
+                if gid != 0:
+                    char_to_gid[code] = gid
 
-    return {
-        "data": data,
-        "widths": widths,
-        "char_to_gid": char_to_gid,
-    }
-
-
-def embed_thai_font_on_page(
-    writer: PdfWriter, page: PageObject, used_chars: str
-) -> Optional[str]:
-    """
-    ฝังฟอนต์ภาษาไทย (/FThai) ลงใน Resources ของหน้า PDF เพื่อรองรับตัวอักษรภาษาไทย/อังกฤษทุกตัว
-    """
-    ttf_info = load_windows_thai_ttf()
-    if not ttf_info:
+        clean_name = re.sub(r"[^A-Za-z0-9]", "", font_id) or "CustomFont"
+        return {
+            "id": font_id,
+            "pdf_base_name": f"/{clean_name}",
+            "pdf_res_name": f"/FT_{clean_name}",
+            "data": data,
+            "widths": widths,
+            "char_to_gid": char_to_gid,
+        }
+    except Exception:
         return None
 
+
+@st.cache_resource
+def load_builtin_fonts_catalog() -> Dict[str, Dict]:
+    """โหลดฟอนต์มาตรฐานทั้งหมดที่มีอยู่ในโฟลเดอร์ fonts/ หรือในระบบ"""
+    base_dir = os.path.dirname(os.path.abspath(__file__))
+    loaded: Dict[str, Dict] = {}
+
+    for key, info in FONT_CATALOG.items():
+        if key == "auto":
+            continue
+        for rel_or_abs in info["paths"]:
+            candidate = (
+                rel_or_abs
+                if os.path.isabs(rel_or_abs)
+                else os.path.join(base_dir, rel_or_abs)
+            )
+            if os.path.exists(candidate):
+                with open(candidate, "rb") as f:
+                    parsed = parse_ttf_bytes(f.read(), key)
+                if parsed:
+                    parsed["label"] = info["label"]
+                    loaded[key] = parsed
+                    break
+
+    # หากไม่พบฟอนต์ตามรายการ ให้ลองค้นหาไฟล์ .ttf ใดๆ ในโฟลเดอร์โปรเจกต์
+    if not loaded:
+        fallback_ttf = os.path.join(base_dir, "THSarabun.ttf")
+        if os.path.exists(fallback_ttf):
+            with open(fallback_ttf, "rb") as f:
+                parsed = parse_ttf_bytes(f.read(), "THSarabun")
+            if parsed:
+                parsed["label"] = "🔤 TH Sarabun"
+                loaded["THSarabun"] = parsed
+
+    return loaded
+
+
+def get_all_available_fonts() -> Dict[str, Dict]:
+    """รวมฟอนต์ในตัวโปรแกรมเข้ากับฟอนต์ที่ผู้ใช้อัปโหลดเพิ่มเติมใน Session"""
+    catalog = dict(load_builtin_fonts_catalog())
+    custom_fonts = st.session_state.get("custom_uploaded_fonts", {})
+    for k, v in custom_fonts.items():
+        catalog[k] = v
+    return catalog
+
+
+def detect_pdf_fonts(reader: PdfReader) -> List[str]:
+    """ตรวจสอบรายชื่อฟอนต์ทั้งหมดที่ฝังอยู่ในไฟล์ PDF ต้นฉบับ"""
+    detected = []
+    seen = set()
+    for page in reader.pages:
+        try:
+            resources = page.get("/Resources")
+            if not resources or "/Font" not in resources:
+                continue
+            fonts = resources["/Font"].get_object()
+            for font_ref in fonts.values():
+                font_obj = font_ref.get_object()
+                base_font = str(font_obj.get("/BaseFont", "")).lstrip("/")
+                if "+" in base_font:
+                    base_font = base_font.split("+", 1)[1]
+                if base_font and base_font not in seen:
+                    seen.add(base_font)
+                    detected.append(base_font)
+        except Exception:
+            pass
+    return detected
+
+
+def resolve_best_font_key(
+    requested_key: str,
+    detected_fonts: List[str],
+    available_fonts: Dict[str, Dict],
+) -> str:
+    """
+    เลือกฟอนต์ที่เหมาะสมที่สุด:
+    - หากผู้ใช้ระบุชื่อฟอนต์โดยตรง ให้ใช้ฟอนต์นั้น
+    - หากเลือก 'auto' ให้จับคู่กับฟอนต์ที่ตรวจพบในไฟล์ PDF ต้นฉบับโดยอัตโนมัติ
+    """
+    if requested_key != "auto" and requested_key in available_fonts:
+        return requested_key
+
+    # ตรวจสอบจากฟอนต์หลักตัวแรกของเอกสาร (detected_fonts[0]) ก่อนเป็นอันดับแรก
+    search_order = (
+        [detected_fonts[0].lower(), " ".join(detected_fonts).lower()]
+        if detected_fonts
+        else [""]
+    )
+
+    for target in search_order:
+        for k in available_fonts:
+            if k.lower() in target:
+                return k
+        if any(w in target for w in ["chatthai", "cschat"]):
+            if "CSChatThai" in available_fonts:
+                return "CSChatThai"
+        if any(
+            w in target
+            for w in ["chatthai", "cschat", "leela", "sukhumvit", "kanit", "prompt"]
+        ):
+            if "Leelawadee" in available_fonts:
+                return "Leelawadee"
+            if "LeelawadeeUI" in available_fonts:
+                return "LeelawadeeUI"
+        if any(w in target for w in ["sarabun", "angsana", "cordia", "browa", "upc"]):
+            if "THSarabunNew" in available_fonts:
+                return "THSarabunNew"
+            if "THSarabun" in available_fonts:
+                return "THSarabun"
+        if any(w in target for w in ["tahoma", "arial", "calibri", "helvetica", "sans"]):
+            if "Tahoma" in available_fonts:
+                return "Tahoma"
+
+    # ค่าเริ่มต้นหากไม่ตรงกับเงื่อนไขข้างต้น
+    for pref in ("Leelawadee", "THSarabunNew", "THSarabun", "Tahoma", "LeelawadeeUI"):
+        if pref in available_fonts:
+            return pref
+    return next(iter(available_fonts.keys()), "")
+
+
+def embed_selected_font_on_page(
+    writer: PdfWriter,
+    page: PageObject,
+    ttf_info: Dict,
+    used_chars: str,
+) -> str:
+    """
+    ฝังฟอนต์ TrueType ที่เลือกลงใน Resources ของหน้า PDF (เช่น /FT_Leelawadee, /FT_THSarabunNew)
+    """
     char_to_gid = ttf_info["char_to_gid"]
     widths = ttf_info["widths"]
+    base_name = ttf_info["pdf_base_name"]
+    res_name = ttf_info["pdf_res_name"]
 
     font_file_stream = DecodedStreamObject()
     font_file_stream.set_data(ttf_info["data"])
@@ -204,7 +393,7 @@ def embed_thai_font_on_page(
     font_descriptor = DictionaryObject(
         {
             NameObject("/Type"): NameObject("/FontDescriptor"),
-            NameObject("/FontName"): NameObject("/LeelawadeeUI"),
+            NameObject("/FontName"): NameObject(base_name),
             NameObject("/Flags"): NumberObject(32),
             NameObject("/FontBBox"): ArrayObject(
                 [
@@ -237,7 +426,7 @@ def embed_thai_font_on_page(
         {
             NameObject("/Type"): NameObject("/Font"),
             NameObject("/Subtype"): NameObject("/CIDFontType2"),
-            NameObject("/BaseFont"): NameObject("/LeelawadeeUI"),
+            NameObject("/BaseFont"): NameObject(base_name),
             NameObject("/CIDSystemInfo"): DictionaryObject(
                 {
                     NameObject("/Registry"): TextStringObject("Adobe"),
@@ -284,7 +473,7 @@ def embed_thai_font_on_page(
         {
             NameObject("/Type"): NameObject("/Font"),
             NameObject("/Subtype"): NameObject("/Type0"),
-            NameObject("/BaseFont"): NameObject("/LeelawadeeUI"),
+            NameObject("/BaseFont"): NameObject(base_name),
             NameObject("/Encoding"): NameObject("/Identity-H"),
             NameObject("/DescendantFonts"): ArrayObject([df_ref]),
             NameObject("/ToUnicode"): tu_ref,
@@ -298,8 +487,14 @@ def embed_thai_font_on_page(
     if "/Font" not in resources:
         resources[NameObject("/Font")] = DictionaryObject()
     font_dict = resources["/Font"].get_object()
-    font_dict[NameObject("/FThai")] = font_ref
-    return "/FThai"
+    font_dict[NameObject(res_name)] = font_ref
+    return res_name
+
+
+# คงฟังก์ชัน load_windows_thai_ttf ไว้เพื่อความเข้ากันได้กับ main.py
+def load_windows_thai_ttf() -> Optional[Dict]:
+    catalog = load_builtin_fonts_catalog()
+    return next(iter(catalog.values()), None)
 
 
 # ---------------------------------------------------------------------------
@@ -390,9 +585,7 @@ def repair_page_tounicode(
 
 
 def match_keyword_in_text(keyword: str, text: str) -> Optional[str]:
-    """
-    ค้นหาคำในข้อความของ PDF โดยรองรับทั้งการค้นหาตรงตัว และการค้นหาแบบข้ามช่องว่างพิเศษใน PDF
-    """
+    """ค้นหาคำในข้อความของ PDF โดยรองรับทั้งการค้นหาตรงตัว และการค้นหาแบบข้ามช่องว่างพิเศษใน PDF"""
     kw = keyword.strip()
     if not kw:
         return None
@@ -459,7 +652,7 @@ def parse_page_text_groups(page: PageObject) -> List[Dict]:
 
     raw_stream = contents.get_data().decode("latin-1", errors="ignore")
     pattern = re.compile(
-        r"BT\s+1 0 0 1 ([0-9.]+) ([0-9.]+) Tm\s+(/(?:F\d+|FThai))\s+([0-9.]+) Tf\s+(.*?)\s+ET",
+        r"BT\s+1 0 0 1 ([0-9.]+) ([0-9.]+) Tm\s+(/(?:F\d+|FThai|FT_[A-Za-z0-9]+))\s+([0-9.]+) Tf\s+(.*?)\s+ET",
         re.S,
     )
 
@@ -533,7 +726,9 @@ def parse_page_text_groups(page: PageObject) -> List[Dict]:
     return result
 
 
-def extract_page_lines_for_canvas(page: PageObject) -> List[Tuple[float, float, float, float]]:
+def extract_page_lines_for_canvas(
+    page: PageObject,
+) -> List[Tuple[float, float, float, float]]:
     """ดึงเส้นตาราง (m -> l -> S) จากหน้า PDF เพื่อวาดเป็นพื้นหลังอ้างอิงบนกระดานลากวาง"""
     contents = page.get_contents()
     if contents is None:
@@ -550,39 +745,45 @@ def encode_text_to_bt_stream(
     x: float,
     y: float,
     font_size: float,
-    font_key: str,
+    orig_font_key: str,
     char_to_cid: Dict[str, int],
-    thai_char_to_gid: Optional[Dict[int, int]],
+    ttf_info: Optional[Dict],
+    force_custom_font: bool = False,
 ) -> Tuple[str, bool]:
     """
     แปลงข้อความให้เป็นคำสั่ง PDF BT ... ET
+    - หากไม่ได้บังคับเปลี่ยนฟอนต์ และตัวอักษรทั้งหมดมีอยู่ในฟอนต์เดิมของเอกสาร จะใช้ฟอนต์เดิมของ PDF ทันที
+    - หากมีตัวอักษรใหม่ หรือผู้ใช้เลือกเปลี่ยนฟอนต์ จะใช้ฟอนต์ TrueType ที่เลือก (ttf_info)
     """
-    expanded_for_orig = text
-    if "\u0e33" in expanded_for_orig and "\u0e32" in char_to_cid:
-        if "\u0e4d" in char_to_cid:
-            expanded_for_orig = expanded_for_orig.replace("\u0e33", "\u0e4d\u0e32")
-        elif "\u0e33" in char_to_cid:
-            expanded_for_orig = expanded_for_orig.replace("\u0e33", "\u0e33\u0e32")
+    if not force_custom_font:
+        expanded_for_orig = text
+        if "\u0e33" in expanded_for_orig and "\u0e32" in char_to_cid:
+            if "\u0e4d" in char_to_cid:
+                expanded_for_orig = expanded_for_orig.replace("\u0e33", "\u0e4d\u0e32")
+            elif "\u0e33" in char_to_cid:
+                expanded_for_orig = expanded_for_orig.replace("\u0e33", "\u0e33\u0e32")
 
-    can_use_original = all(ch in char_to_cid for ch in expanded_for_orig)
-    if can_use_original and expanded_for_orig:
-        hex_cids = "".join(f"{char_to_cid[ch]:04x}" for ch in expanded_for_orig)
-        bt = f"BT\n1 0 0 1 {x:.4f} {y:.4f} Tm\n{font_key} {font_size:g} Tf\n[<{hex_cids}> 0] TJ\nET"
-        return bt, False
+        can_use_original = all(ch in char_to_cid for ch in expanded_for_orig)
+        if can_use_original and expanded_for_orig:
+            hex_cids = "".join(f"{char_to_cid[ch]:04x}" for ch in expanded_for_orig)
+            bt = f"BT\n1 0 0 1 {x:.4f} {y:.4f} Tm\n{orig_font_key} {font_size:g} Tf\n[<{hex_cids}> 0] TJ\nET"
+            return bt, False
 
-    if thai_char_to_gid:
+    if ttf_info:
+        char_to_gid = ttf_info["char_to_gid"]
+        res_name = ttf_info["pdf_res_name"]
         gids = []
         for ch in text:
-            gid = thai_char_to_gid.get(ord(ch))
+            gid = char_to_gid.get(ord(ch))
             if gid is not None:
                 gids.append(f"{gid:04x}")
-            elif ord(" ") in thai_char_to_gid:
-                gids.append(f"{thai_char_to_gid[ord(' ')]:04x}")
+            elif ord(" ") in char_to_gid:
+                gids.append(f"{char_to_gid[ord(' ')]:04x}")
         hex_gids = "".join(gids)
-        bt = f"BT\n1 0 0 1 {x:.4f} {y:.4f} Tm\n/FThai {font_size:g} Tf\n[<{hex_gids}> 0] TJ\nET"
+        bt = f"BT\n1 0 0 1 {x:.4f} {y:.4f} Tm\n{res_name} {font_size:g} Tf\n[<{hex_gids}> 0] TJ\nET"
         return bt, True
 
-    return f"BT\n1 0 0 1 {x:.4f} {y:.4f} Tm\n{font_key} {font_size:g} Tf\n[] TJ\nET", False
+    return f"BT\n1 0 0 1 {x:.4f} {y:.4f} Tm\n{orig_font_key} {font_size:g} Tf\n[] TJ\nET", False
 
 
 def apply_text_modifications_to_page(
@@ -592,10 +793,13 @@ def apply_text_modifications_to_page(
     new_texts: List[str],
     highlight_configs: Optional[List[Dict]] = None,
     extra_texts: Optional[List[Dict]] = None,
+    selected_font_key: str = "auto",
+    detected_fonts: Optional[List[str]] = None,
+    available_fonts: Optional[Dict[str, Dict]] = None,
 ) -> None:
     """
-    นำการแก้ไขข้อความ, การไฮไลต์ข้อความ (Highlight) พร้อมข้อความต่อท้ายในบรรทัดเดียวกัน (Append Text),
-    และข้อความที่ผู้ใช้ลากวาง (Drag & Drop Extra Texts) ไปอัปเดตลงใน Content Stream ของหน้า PDF
+    นำการแก้ไขข้อความ, การไฮไลต์ข้อความพร้อมข้อความต่อท้ายในบรรทัดเดียวกัน,
+    และข้อความที่ลากวาง (แต่ละกล่องเลือกฟอนต์แยกได้) ไปอัปเดตลงในหน้า PDF
     """
     font_maps = repair_page_tounicode(page)
     contents = page.get_contents()
@@ -603,8 +807,17 @@ def apply_text_modifications_to_page(
         return
 
     raw_stream = contents.get_data().decode("latin-1", errors="ignore")
-    ttf_info = load_windows_thai_ttf()
-    thai_char_to_gid = ttf_info["char_to_gid"] if ttf_info else None
+
+    if available_fonts is None:
+        available_fonts = load_builtin_fonts_catalog()
+    if detected_fonts is None:
+        detected_fonts = []
+
+    resolved_main_font_key = resolve_best_font_key(
+        selected_font_key, detected_fonts, available_fonts
+    )
+    main_ttf_info = available_fonts.get(resolved_main_font_key)
+    force_custom_main = selected_font_key != "auto"
 
     if highlight_configs is None:
         highlight_configs = [{} for _ in groups]
@@ -612,8 +825,8 @@ def apply_text_modifications_to_page(
         extra_texts = []
 
     replacements: List[Tuple[int, int, str]] = []
-    needs_thai_font = False
-    chars_for_thai_font: List[str] = []
+    # เก็บรายการตัวอักษรที่ต้องฝังแยกตามชื่อฟอนต์ (font_id -> list of strings)
+    used_chars_by_font: Dict[str, List[str]] = {}
 
     for grp, updated_text, hl_cfg in zip(groups, new_texts, highlight_configs):
         blocks = grp["blocks"]
@@ -624,7 +837,9 @@ def apply_text_modifications_to_page(
         hl_subtext = str(hl_cfg.get("subtext", "")).strip()
         append_text = str(hl_cfg.get("append_text", "")).strip()
         hl_color: Tuple[float, float, float] = hl_cfg.get("hl_color", (1.0, 0.95, 0.35))
-        append_color: Tuple[float, float, float] = hl_cfg.get("append_color", (0.82, 0.08, 0.08))
+        append_color: Tuple[float, float, float] = hl_cfg.get(
+            "append_color", (0.82, 0.08, 0.08)
+        )
         highlight_append_too = bool(hl_cfg.get("highlight_append_too", False))
 
         text_changed = updated_text != grp["original_text"]
@@ -641,11 +856,11 @@ def apply_text_modifications_to_page(
             main_end_x = grp["end_x"]
         else:
             main_width = compute_text_width_pt(
-                updated_text, font_size, char_to_cid, cid_widths, ttf_info
+                updated_text, font_size, char_to_cid, cid_widths, main_ttf_info
             )
             main_end_x = base_x + main_width
 
-        # 1. คำสั่งวาดแถบสีไฮไลต์
+        # 1. วาดแถบสีไฮไลต์
         prefix_cmd = ""
         if is_highlighted and updated_text.strip():
             hr, hg, hb = hl_color
@@ -656,15 +871,19 @@ def apply_text_modifications_to_page(
                 pos = updated_text.find(hl_subtext)
                 prefix_part = updated_text[:pos]
                 hl_x = base_x + compute_text_width_pt(
-                    prefix_part, font_size, char_to_cid, cid_widths, ttf_info
+                    prefix_part, font_size, char_to_cid, cid_widths, main_ttf_info
                 )
                 hl_w = compute_text_width_pt(
-                    hl_subtext, font_size, char_to_cid, cid_widths, ttf_info
+                    hl_subtext, font_size, char_to_cid, cid_widths, main_ttf_info
                 )
 
-            if append_text and highlight_append_too and (not hl_subtext or hl_subtext == updated_text):
+            if (
+                append_text
+                and highlight_append_too
+                and (not hl_subtext or hl_subtext == updated_text)
+            ):
                 append_w = compute_text_width_pt(
-                    " " + append_text, font_size, char_to_cid, cid_widths, ttf_info
+                    " " + append_text, font_size, char_to_cid, cid_widths, main_ttf_info
                 )
                 hl_w += append_w + 4.0
 
@@ -675,22 +894,24 @@ def apply_text_modifications_to_page(
                 f"{hl_x - 1.5:.2f} {hl_y:.2f} {hl_w + 3.0:.2f} {hl_h:.2f} re\nf\nQ\n"
             )
 
-        # 2. คำสั่งวาดข้อความต่อท้ายในบรรทัดเดียวกัน
+        # 2. วาดข้อความต่อท้ายในบรรทัดเดียวกัน
         suffix_cmd = ""
         if append_text:
             append_x = main_end_x + 5.0
-            append_bt, used_fthai_app = encode_text_to_bt_stream(
+            append_bt, used_custom_app = encode_text_to_bt_stream(
                 text=append_text,
                 x=append_x,
                 y=base_y,
                 font_size=font_size,
-                font_key=first_blk["font_key"],
+                orig_font_key=first_blk["font_key"],
                 char_to_cid=char_to_cid,
-                thai_char_to_gid=thai_char_to_gid,
+                ttf_info=main_ttf_info,
+                force_custom_font=force_custom_main,
             )
-            if used_fthai_app:
-                needs_thai_font = True
-                chars_for_thai_font.append(append_text)
+            if used_custom_app and main_ttf_info:
+                used_chars_by_font.setdefault(resolved_main_font_key, []).append(
+                    append_text
+                )
 
             ar, ag, ab = append_color
             suffix_cmd = f"\nq\n{ar:.3f} {ag:.3f} {ab:.3f} rg\n{append_bt}\nQ"
@@ -720,18 +941,20 @@ def apply_text_modifications_to_page(
                         empty_bt += suffix_cmd
                     replacements.append((s, e, empty_bt))
             else:
-                new_bt, used_fthai = encode_text_to_bt_stream(
+                new_bt, used_custom = encode_text_to_bt_stream(
                     text=updated_text,
                     x=base_x,
                     y=base_y,
                     font_size=font_size,
-                    font_key=first_blk["font_key"],
+                    orig_font_key=first_blk["font_key"],
                     char_to_cid=char_to_cid,
-                    thai_char_to_gid=thai_char_to_gid,
+                    ttf_info=main_ttf_info,
+                    force_custom_font=force_custom_main,
                 )
-                if used_fthai:
-                    needs_thai_font = True
-                    chars_for_thai_font.append(updated_text)
+                if used_custom and main_ttf_info:
+                    used_chars_by_font.setdefault(resolved_main_font_key, []).append(
+                        updated_text
+                    )
 
                 s0, e0 = first_blk["span"]
                 replacements.append((s0, e0, prefix_cmd + new_bt + suffix_cmd))
@@ -752,7 +975,7 @@ def apply_text_modifications_to_page(
             modified_stream[:start_idx] + rep_str + modified_stream[end_idx:]
         )
 
-    # 4. วาดกล่องข้อความที่ผู้ใช้ลากวาง (Drag & Drop Text Boxes)
+    # 4. วาดกล่องข้อความที่ผู้ใช้ลากวาง (แต่ละกล่องสามารถเลือกฟอนต์ของตัวเองได้)
     page_height = float(page.mediabox.height)
     is_flipped_ctm = "1 0 0 -1 " in raw_stream
     _, first_char_to_cid, first_cid_widths = (
@@ -768,8 +991,14 @@ def apply_text_modifications_to_page(
         sz = float(item.get("size", 14.0))
         color_hex = str(item.get("color", "#d11414"))
         bg_hex = str(item.get("bg_color", ""))
+        box_font_req = str(item.get("font", selected_font_key))
 
-        # แปลงพิกัดจากระยะขอบบนของกระดานลากวาง (top_pt) เป็นพิกัดฐานตัวอักษร PDF (pdf_y จากขอบล่าง)
+        box_font_key = resolve_best_font_key(
+            box_font_req, detected_fonts, available_fonts
+        )
+        box_ttf_info = available_fonts.get(box_font_key, main_ttf_info)
+        force_box_custom = box_font_req != "auto"
+
         pdf_x = left_pt
         pdf_y = page_height - top_pt - (0.85 * sz)
 
@@ -779,7 +1008,11 @@ def apply_text_modifications_to_page(
         if bg_hex and bg_hex.startswith("#"):
             br, bg_g, bb = hex_to_rgb_float(bg_hex)
             box_w = compute_text_width_pt(
-                txt, sz, first_char_to_cid, first_cid_widths, ttf_info
+                txt,
+                sz,
+                {} if force_box_custom else first_char_to_cid,
+                {} if force_box_custom else first_cid_widths,
+                box_ttf_info,
             )
             hl_y = pdf_y - (0.24 * sz)
             hl_h = 1.14 * sz
@@ -788,18 +1021,18 @@ def apply_text_modifications_to_page(
                 f"{pdf_x - 2.0:.2f} {hl_y:.2f} {box_w + 4.0:.2f} {hl_h:.2f} re\nf\nQ\n"
             )
 
-        bt_cmd, used_fthai_box = encode_text_to_bt_stream(
+        bt_cmd, used_custom_box = encode_text_to_bt_stream(
             text=txt,
             x=pdf_x,
             y=pdf_y,
             font_size=sz,
-            font_key="/F1" if "/F1" in font_maps else "/FThai",
+            orig_font_key="/F1" if "/F1" in font_maps else "/FThai",
             char_to_cid=first_char_to_cid,
-            thai_char_to_gid=thai_char_to_gid,
+            ttf_info=box_ttf_info,
+            force_custom_font=force_box_custom,
         )
-        if used_fthai_box:
-            needs_thai_font = True
-            chars_for_thai_font.append(txt)
+        if used_custom_box and box_ttf_info:
+            used_chars_by_font.setdefault(box_font_key, []).append(txt)
 
         if is_flipped_ctm:
             modified_stream += (
@@ -815,8 +1048,12 @@ def apply_text_modifications_to_page(
                 f"{bt_cmd}\nQ\n"
             )
 
-    if needs_thai_font:
-        embed_thai_font_on_page(writer, page, "".join(chars_for_thai_font))
+    # ฝังฟอนต์ที่ถูกใช้งานลงในหน้า PDF
+    for f_key, char_list in used_chars_by_font.items():
+        if f_key in available_fonts:
+            embed_selected_font_on_page(
+                writer, page, available_fonts[f_key], "".join(char_list)
+            )
 
     new_stream_obj = DecodedStreamObject()
     new_stream_obj.set_data(modified_stream.encode("latin-1", errors="ignore"))
@@ -834,15 +1071,13 @@ def render_drag_and_drop_canvas(
     groups: List[Dict],
     lines: List[Tuple[float, float, float, float]],
     extra_items: List[Dict],
-    pdf_bytes: bytes,
+    available_fonts: Dict[str, Dict],
+    default_font_key: str,
 ) -> None:
     """
-    แสดงกระดานหน้ากระดาษ PDF ที่ผู้ใช้สามารถคลิกเมาส์ค้างที่กล่องข้อความแล้วลากไปวางตรงไหนก็ได้
-    พร้อมซิงค์พิกัด (X, Y) กลับมายัง Streamlit อัตโนมัติทันทีที่ปล่อยเมาส์หรือกดบันทึก
+    แสดงกระดานหน้ากระดาษ PDF ที่ผู้ใช้สามารถเลือกฟอนต์ คลิกเมาส์ค้างที่กล่องข้อความ
+    แล้วลากไปวางตรงไหนก็ได้ พร้อมซิงค์กลับมายัง Streamlit อัตโนมัติ
     """
-    b64_pdf = base64.b64encode(pdf_bytes).decode("utf-8")
-
-    # สร้าง SVG เส้นตารางและข้อความเดิมของหน้า PDF เป็นพื้นหลังที่คมชัดและทำงานได้แม้ไม่มีอินเทอร์เน็ต
     svg_elements = []
     for x1, y1, x2, y2 in lines:
         svg_elements.append(
@@ -851,7 +1086,6 @@ def render_drag_and_drop_canvas(
         )
     for g in groups:
         gx = g["x"]
-        # แปลงพิกัดฐาน PDF (y จากล่าง) เป็นพิกัด SVG (y จากบน)
         gy = page_height - g["y"]
         gsz = g["font_size"]
         gtxt = html.escape(g["original_text"])
@@ -861,6 +1095,16 @@ def render_drag_and_drop_canvas(
         )
     svg_bg_str = "".join(svg_elements)
     items_json = json.dumps(extra_items, ensure_ascii=False)
+
+    # สร้างตัวเลือกฟอนต์ใน Toolbar ของกระดานลากวาง
+    font_options_html = ['<option value="auto">🔄 อัตโนมัติ (ตามเอกสาร)</option>']
+    for f_key, f_info in available_fonts.items():
+        sel = "selected" if f_key == default_font_key else ""
+        label_clean = html.escape(f_info.get("label", f_key))
+        font_options_html.append(
+            f'<option value="{html.escape(f_key)}" {sel}>{label_clean}</option>'
+        )
+    font_select_html = "".join(font_options_html)
 
     canvas_html = f"""
     <!DOCTYPE html>
@@ -892,7 +1136,7 @@ def render_drag_and_drop_canvas(
             border: 1px solid #cbd5e1;
             border-radius: 6px;
             font-size: 14px;
-            min-width: 200px;
+            min-width: 180px;
         }}
         .toolbar select, .toolbar input[type="number"] {{
             padding: 6px 8px;
@@ -909,20 +1153,15 @@ def render_drag_and_drop_canvas(
             cursor: pointer;
             transition: 0.15s;
         }}
-        .btn-add {{
-            background: #2563eb;
-            color: white;
-        }}
+        .btn-add {{ background: #2563eb; color: white; }}
         .btn-add:hover {{ background: #1d4ed8; }}
-        .btn-save {{
-            background: #16a34a;
-            color: white;
-        }}
+        .btn-save {{ background: #16a34a; color: white; }}
         .btn-save:hover {{ background: #15803d; }}
         .status-badge {{
             font-size: 12px;
             color: #475569;
-            margin-left: auto;
+            width: 100%;
+            margin-top: 2px;
         }}
         .stage-wrapper {{
             display: flex;
@@ -960,7 +1199,6 @@ def render_drag_and_drop_canvas(
             white-space: nowrap;
             line-height: 1.15;
             box-shadow: 0 2px 6px rgba(37,99,235,0.18);
-            transition: box-shadow 0.1s;
         }}
         .drag-item:active {{
             cursor: grabbing;
@@ -969,7 +1207,7 @@ def render_drag_and_drop_canvas(
         }}
         .drag-item .coord-tip {{
             position: absolute;
-            top: -20px;
+            top: -19px;
             left: 0;
             background: #1e293b;
             color: #fff;
@@ -998,8 +1236,13 @@ def render_drag_and_drop_canvas(
     <body>
         <div class="toolbar">
             <input type="text" id="newTextInput" placeholder="พิมพ์ข้อความใหม่ที่นี่..." value="ข้อความใหม่ (ลากวางได้)" />
+            <label style="font-size:13px;">ฟอนต์:
+                <select id="newFontInput" style="max-width:210px;">
+                    {font_select_html}
+                </select>
+            </label>
             <label style="font-size:13px;">ขนาด:
-                <input type="number" id="newSizeInput" value="14" min="8" max="42" style="width:52px;" />
+                <input type="number" id="newSizeInput" value="14" min="8" max="42" style="width:48px;" />
             </label>
             <label style="font-size:13px;">สีอักษร:
                 <select id="newColorInput">
@@ -1009,7 +1252,7 @@ def render_drag_and_drop_canvas(
                     <option value="#1b5e20">🟢 สีเขียวเข้ม</option>
                 </select>
             </label>
-            <label style="font-size:13px;">ไฮไลต์พื้นหลัง:
+            <label style="font-size:13px;">พื้นหลัง:
                 <select id="newBgInput">
                     <option value="">ไม่ใส่สีพื้นหลัง</option>
                     <option value="#fff259" selected>🟨 ไฮไลต์เหลือง</option>
@@ -1020,7 +1263,7 @@ def render_drag_and_drop_canvas(
             </label>
             <button class="btn btn-add" onclick="addNewBox()">➕ เพิ่มข้อความลงกระดาน</button>
             <button class="btn btn-save" onclick="syncToStreamlit(true)">✅ อัปเดตลงไฟล์ PDF ทันที</button>
-            <span class="status-badge" id="statusBadge">💡 คลิกค้างที่กล่องข้อความเพื่อลากไปวางตำแหน่งใดก็ได้</span>
+            <div class="status-badge" id="statusBadge">💡 คลิกค้างที่กล่องข้อความเพื่อลากไปวางตำแหน่งใดก็ได้ (ดับเบิลคลิกที่กล่องเพื่อแก้ไขข้อความ)</div>
         </div>
 
         <div class="stage-wrapper">
@@ -1056,7 +1299,8 @@ def render_drag_and_drop_canvas(
 
                     const tip = document.createElement("span");
                     tip.className = "coord-tip";
-                    tip.innerText = `X:${{Math.round(item.x)}}, Y:${{Math.round(item.top_y)}} (ดับเบิลคลิกแก้คำ)`;
+                    const fName = item.font || "auto";
+                    tip.innerText = `[${{fName}}] X:${{Math.round(item.x)}}, Y:${{Math.round(item.top_y)}}`;
                     box.appendChild(tip);
 
                     const txtSpan = document.createElement("span");
@@ -1067,9 +1311,7 @@ def render_drag_and_drop_canvas(
                     delBtn.className = "del-btn";
                     delBtn.innerText = "×";
                     delBtn.title = "ลบข้อความนี้";
-                    delBtn.onmousedown = (e) => {{
-                        e.stopPropagation();
-                    }};
+                    delBtn.onmousedown = (e) => {{ e.stopPropagation(); }};
                     delBtn.onclick = (e) => {{
                         e.stopPropagation();
                         items.splice(idx, 1);
@@ -1078,7 +1320,6 @@ def render_drag_and_drop_canvas(
                     }};
                     box.appendChild(delBtn);
 
-                    // ดับเบิลคลิกเพื่อแก้ไขข้อความในกล่องได้ทันที
                     box.ondblclick = (e) => {{
                         e.stopPropagation();
                         const updated = prompt("แก้ไขข้อความ:", item.text);
@@ -1089,11 +1330,9 @@ def render_drag_and_drop_canvas(
                         }}
                     }};
 
-                    // ระบบลากวางด้วยเมาส์ (Mouse Drag & Drop)
                     box.onmousedown = (e) => {{
                         if (e.target === delBtn) return;
                         e.preventDefault();
-                        const rect = stage.getBoundingClientRect();
                         const startMouseX = e.clientX;
                         const startMouseY = e.clientY;
                         const origX = item.x;
@@ -1108,7 +1347,7 @@ def render_drag_and_drop_canvas(
                             item.top_y = Math.round(ny * 10) / 10;
                             box.style.left = item.x + "px";
                             box.style.top = item.top_y + "px";
-                            tip.innerText = `X:${{Math.round(item.x)}}, Y:${{Math.round(item.top_y)}}`;
+                            tip.innerText = `[${{fName}}] X:${{Math.round(item.x)}}, Y:${{Math.round(item.top_y)}}`;
                             badge.innerText = `📍 กำลังลาก "${{item.text}}" ไปที่ (X: ${{Math.round(item.x)}}, Y: ${{Math.round(item.top_y)}})`;
                         }}
 
@@ -1130,15 +1369,16 @@ def render_drag_and_drop_canvas(
             function addNewBox() {{
                 const txt = document.getElementById("newTextInput").value.trim();
                 if (!txt) return;
+                const fKey = document.getElementById("newFontInput").value;
                 const sz = parseFloat(document.getElementById("newSizeInput").value) || 14;
                 const col = document.getElementById("newColorInput").value;
                 const bg = document.getElementById("newBgInput").value;
 
-                // วางกล่องใหม่ไว้กลางกระดาษเพื่อให้ลากต่อได้ง่าย
                 const offset = (items.length * 22) % 180;
                 items.push({{
                     page: PAGE_NO,
                     text: txt,
+                    font: fKey,
                     x: 120 + offset,
                     top_y: 160 + offset,
                     size: sz,
@@ -1183,14 +1423,13 @@ def render_drag_and_drop_canvas(
     </body>
     </html>
     """
-    components.html(canvas_html, height=int(page_height) + 115, scrolling=True)
+    components.html(canvas_html, height=int(page_height) + 135, scrolling=True)
 
 
 def render_pdf_preview(pdf_bytes: bytes, height: int = 720) -> None:
     """
     แสดงตัวอย่างไฟล์ PDF บนหน้าเว็บด้วย PDF.js (วาดลงบน HTML5 <canvas>)
     แก้ปัญหา Google Chrome และ Streamlit Cloud บล็อก <iframe src="data:application/pdf;base64,...">
-    ใช้ได้ทั้งบนคอมพิวเตอร์และมือถือทุกเบราว์เซอร์
     """
     b64_pdf = base64.b64encode(pdf_bytes).decode("utf-8")
     preview_html = f"""
@@ -1233,9 +1472,7 @@ def render_pdf_preview(pdf_bytes: bytes, height: int = 720) -> None:
             font-weight: 600;
             font-size: 12px;
         }}
-        .open-tab-btn:hover {{
-            background: #2563eb;
-        }}
+        .open-tab-btn:hover {{ background: #2563eb; }}
         #pdf-container {{
             display: flex;
             flex-direction: column;
@@ -1315,16 +1552,21 @@ def render_pdf_preview(pdf_bytes: bytes, height: int = 720) -> None:
 
 def main() -> None:
     st.set_page_config(
-        page_title="PDF Editor - ลากวางข้อความ & ไฮไลต์ PDF",
+        page_title="PDF Editor - รองรับหลายฟอนต์ & ลากวางข้อความ",
         page_icon="🖍️",
         layout="wide",
     )
 
-    st.title("🖍️ โปรแกรมจัดการไฟล์ PDF: ลากวางข้อความ, ไฮไลต์ & แก้ไขเอกสาร")
+    st.title("🖍️ โปรแกรมจัดการไฟล์ PDF: รองรับหลายฟอนต์, ลากวางข้อความ & ไฮไลต์")
     st.write(
-        "อัปโหลดไฟล์ PDF เพื่อ **เพิ่มข้อความและคลิกเมาส์ลากวางตรงไหนก็ได้บนหน้ากระดาษ**, "
-        "**ไฮไลต์ข้อความพร้อมพิมพ์คำต่อท้ายในบรรทัดเดียวกัน**, **แก้ไขข้อความเดิม** หรือ **เพิ่ม/ลบหน้า**"
+        "อัปโหลดไฟล์ PDF เพื่อ **ตรวจจับฟอนต์อัตโนมัติ**, **เลือกฟอนต์ได้หลากหลาย (หรืออัปโหลดฟอนต์ .ttf เพิ่มเติม)**, "
+        "**ลากวางข้อความบนหน้ากระดาษ**, **ไฮไลต์พร้อมเพิ่มข้อความต่อท้าย** และ **แก้ไขข้อความเดิม**"
     )
+
+    if "custom_uploaded_fonts" not in st.session_state:
+        st.session_state["custom_uploaded_fonts"] = {}
+    if "extra_texts" not in st.session_state:
+        st.session_state["extra_texts"] = []
 
     uploaded_file = st.file_uploader(
         "📂 เลือกไฟล์ PDF ที่ต้องการใช้งาน",
@@ -1344,14 +1586,55 @@ def main() -> None:
         st.error(f"ไม่สามารถอ่านไฟล์ PDF นี้ได้: {exc}")
         return
 
-    col_m1, col_m2, col_m3 = st.columns(3)
+    detected_fonts = detect_pdf_fonts(reader)
+    available_fonts = get_all_available_fonts()
+    auto_matched_key = resolve_best_font_key("auto", detected_fonts, available_fonts)
+
+    # แถบแสดงข้อมูลไฟล์และฟอนต์ที่ตรวจพบใน PDF
+    col_m1, col_m2, col_m3, col_m4 = st.columns([2.2, 1.2, 2.5, 1.2])
     col_m1.metric("ชื่อไฟล์ต้นฉบับ", uploaded_file.name)
-    col_m2.metric("จำนวนหน้าทั้งหมด", f"{total_pages} หน้า")
+    col_m2.metric("จำนวนหน้าต้นฉบับ", f"{total_pages} หน้า")
+    col_m3.metric(
+        "🔤 ฟอนต์ในเอกสาร PDF นี้",
+        ", ".join(detected_fonts) if detected_fonts else "ไม่ระบุ (ใช้ฟอนต์มาตรฐาน)",
+    )
 
-    if "extra_texts" not in st.session_state:
-        st.session_state["extra_texts"] = []
+    # แถบตั้งค่าและเลือกฟอนต์ (Multi-Font Selector & Custom TTF Uploader)
+    with st.expander("🔤 ตั้งค่าฟอนต์สำหรับแก้ไขและเพิ่มข้อความ (รองรับหลายฟอนต์ + อัปโหลดฟอนต์ .ttf เพิ่มได้)", expanded=True):
+        f_col1, f_col2 = st.columns([2.5, 2])
+        font_choice_keys = ["auto"] + list(available_fonts.keys())
 
-    # ช่องซิงค์ข้อมูลพิกัดจากกระดานลากวาง (ซ่อนด้วย CSS เพื่อรับค่าอัตโนมัติ)
+        def format_font_option(k: str) -> str:
+            if k == "auto":
+                matched_label = available_fonts.get(auto_matched_key, {}).get("label", auto_matched_key)
+                return f"🔄 อัตโนมัติ (ใช้ฟอนต์เดิมใน PDF + จับคู่ '{matched_label}')"
+            return available_fonts[k].get("label", k)
+
+        selected_font_key = f_col1.selectbox(
+            "เลือกฟอนต์หลักสำหรับแก้ไขข้อความและพิมพ์ข้อความต่อท้าย:",
+            options=font_choice_keys,
+            format_func=format_font_option,
+            index=0,
+        )
+
+        uploaded_ttf = f_col2.file_uploader(
+            "➕ อัปโหลดไฟล์ฟอนต์ (.ttf) เพิ่มเติม (เช่น CSChatThai.ttf, Prompt.ttf):",
+            type=["ttf"],
+            key="custom_ttf_uploader",
+        )
+        if uploaded_ttf is not None:
+            ttf_stem = os.path.splitext(uploaded_ttf.name)[0]
+            if ttf_stem not in st.session_state["custom_uploaded_fonts"]:
+                parsed_custom = parse_ttf_bytes(uploaded_ttf.getvalue(), ttf_stem)
+                if parsed_custom:
+                    parsed_custom["label"] = f"⭐ {ttf_stem} (ฟอนต์ที่อัปโหลด)"
+                    st.session_state["custom_uploaded_fonts"][ttf_stem] = parsed_custom
+                    st.success(f"เพิ่มฟอนต์ '{ttf_stem}' เข้าสู่ระบบเรียบร้อยแล้ว!")
+                    st.rerun()
+                else:
+                    st.error("ไฟล์ .ttf นี้ไม่รองรับตาราง Unicode มาตรฐาน")
+
+    # ช่องซิงค์ข้อมูลพิกัดจากกระดานลากวาง
     st.markdown(
         """
         <style>
@@ -1379,246 +1662,247 @@ def main() -> None:
     except Exception:
         pass
 
-    tab_drag, tab_highlight, tab_edit_text, tab_manage_pages = st.tabs(
-        [
-            "🖱️ 1. เพิ่มข้อความแบบลากวาง (Drag & Drop)",
-            "🖍️ 2. ไฮไลต์ข้อความ & เพิ่มข้อความต่อท้ายในบรรทัดนั้น",
-            "✏️ 3. แก้ไขข้อความเดิม / ค้นหาและแทนที่",
-            "📄 4. จัดการหน้ากระดาษ (เพิ่ม / ลบ / รวมไฟล์ PDF)",
-        ]
-    )
+    # แบ่งหน้าจอเป็น 2 ฝั่ง: ด้านซ้าย (เครื่องมือแก้ไข/กระดานลากวาง) และ ด้านขวา (ตัวอย่าง PDF จริง Live Preview + ดาวน์โหลด)
+    left_col, right_col = st.columns([1.05, 1.0], gap="medium")
 
-    page_groups_map: Dict[int, List[Dict]] = {}
-    edited_texts_map: Dict[int, List[str]] = {}
-    highlight_configs_map: Dict[int, List[Dict]] = {}
-
-    for pno in range(1, total_pages + 1):
-        page_groups_map[pno] = parse_page_text_groups(reader.pages[pno - 1])
-
-    # -----------------------------------------------------------------------
-    # แท็บที่ 1: เพิ่มข้อความลงในไฟล์แบบลากวางตรงไหนก็ได้ (Drag & Drop)
-    # -----------------------------------------------------------------------
-    with tab_drag:
-        st.subheader("🖱️ เพิ่มข้อความใหม่และลากวางด้วยเมาส์ตรงไหนก็ได้บนหน้า PDF")
-        st.markdown(
-            "1. พิมพ์ข้อความ เลือกขนาด สีตัวอักษร และสีไฮไลต์พื้นหลัง แล้วกดปุ่ม **`➕ เพิ่มข้อความลงกระดาน`**\n"
-            "2. **คลิกเมาส์ค้างที่กล่องข้อความบนหน้ากระดาษ** แล้วลากไปวางตำแหน่งใดก็ได้ตามต้องการ (ดับเบิลคลิกที่กล่องเพื่อแก้ข้อความ หรือกด `×` เพื่อลบ)\n"
-            "3. เมื่อปล่อยเมาส์หรือกด **`✅ อัปเดตลงไฟล์ PDF ทันที`** ระบบจะฝังข้อความลงในไฟล์ PDF ตามตำแหน่งที่คุณวางทันที!"
+    with left_col:
+        st.subheader("🛠️ พื้นที่แก้ไขเอกสาร PDF (ฝั่งซ้าย)")
+        tab_drag, tab_highlight, tab_edit_text, tab_manage_pages = st.tabs(
+            [
+                "🖱️ 1. ลากวางข้อความ",
+                "🖍️ 2. ไฮไลต์ & ต่อท้าย",
+                "✏️ 3. แก้ไขข้อความเดิม",
+                "📄 4. จัดการหน้า",
+            ]
         )
 
-        selected_drag_page = (
-            st.selectbox(
-                "เลือกหน้าที่ต้องการวางข้อความ:",
-                options=list(range(1, total_pages + 1)),
-                format_func=lambda x: f"หน้าที่ {x}",
-            )
-            if total_pages > 1
-            else 1
-        )
-
-        target_page_obj = reader.pages[selected_drag_page - 1]
-        pw = float(target_page_obj.mediabox.width)
-        ph = float(target_page_obj.mediabox.height)
-        page_lines = extract_page_lines_for_canvas(target_page_obj)
-
-        render_drag_and_drop_canvas(
-            page_width=pw,
-            page_height=ph,
-            page_number=selected_drag_page,
-            groups=page_groups_map[selected_drag_page],
-            lines=page_lines,
-            extra_items=st.session_state["extra_texts"],
-            pdf_bytes=raw_pdf_bytes,
-        )
-
-        if st.session_state["extra_texts"]:
-            if st.button("🗑️ ล้างกล่องข้อความที่ลากวางทั้งหมด"):
-                st.session_state["extra_texts"] = []
-                st.rerun()
-
-    # -----------------------------------------------------------------------
-    # แท็บที่ 2: ไฮไลต์ข้อความ และเพิ่มข้อความต่อท้ายในบรรทัดนั้น
-    # -----------------------------------------------------------------------
-    with tab_highlight:
-        st.subheader("🖍️ ไฮไลต์ข้อความ และเพิ่มข้อความต่อท้ายในบรรทัดเดียวกัน")
-        opt_col1, opt_col2, opt_col3 = st.columns([2, 2, 2])
-        selected_hl_color_name = opt_col1.selectbox(
-            "🎨 เลือกสีไฮไลต์ (Highlight Color):",
-            options=list(HIGHLIGHT_COLORS.keys()),
-            index=0,
-        )
-        selected_append_color_name = opt_col2.selectbox(
-            "🖋️ เลือกสีตัวอักษรของข้อความที่เพิ่มต่อท้าย:",
-            options=list(APPEND_TEXT_COLORS.keys()),
-            index=1,
-        )
-        highlight_append_too = opt_col3.checkbox(
-            "คลุมสีไฮไลต์ไปถึงข้อความที่เพิ่มต่อท้ายด้วย",
-            value=False,
-        )
-
-        default_hl_rgb = HIGHLIGHT_COLORS[selected_hl_color_name]
-        default_append_rgb = APPEND_TEXT_COLORS[selected_append_color_name]
-
-        with st.expander("⚡ ไฮไลต์และเพิ่มข้อความต่อท้ายแบบระบุคำค้นหา (Quick Highlight & Append)", expanded=True):
-            q_col1, q_col2, q_col3 = st.columns([2, 2, 1])
-            q_keyword = q_col1.text_input(
-                "คำหรือข้อความที่ต้องการไฮไลต์ (เช่น Brother DCP-T220 หรือ 2,500.00):",
-                key="q_kw_input",
-            )
-            q_append = q_col2.text_input(
-                "ข้อความที่ต้องการเพิ่มต่อท้ายในบรรทัดนั้น (เช่น (ตรวจสอบแล้ว) หรือ *ลดพิเศษ*):",
-                key="q_app_input",
-            )
-            q_only_sub = q_col3.checkbox(
-                "ไฮไลต์เฉพาะคำที่ค้นหา",
-                value=True,
-            )
-
-        filter_kw = st.text_input(
-            "🔍 พิมพ์คำเพื่อกรองดูเฉพาะบรรทัดที่ต้องการในตารางด้านล่าง (เว้นว่างเพื่อแสดงทุกบรรทัด):",
-            value="",
-        )
+        page_groups_map: Dict[int, List[Dict]] = {}
+        edited_texts_map: Dict[int, List[str]] = {}
+        highlight_configs_map: Dict[int, List[Dict]] = {}
 
         for pno in range(1, total_pages + 1):
-            groups = page_groups_map[pno]
-            st.markdown(f"#### 📄 หน้าที่ {pno}")
-            if not groups:
-                st.info("หน้านี้ไม่มีบล็อกข้อความ")
-                highlight_configs_map[pno] = []
-                continue
+            page_groups_map[pno] = parse_page_text_groups(reader.pages[pno - 1])
 
-            hl_cfgs_for_page: List[Dict] = []
+        # -----------------------------------------------------------------------
+        # แท็บที่ 1: เพิ่มข้อความลงในไฟล์แบบลากวางตรงไหนก็ได้ (Drag & Drop)
+        # -----------------------------------------------------------------------
+        with tab_drag:
+            st.markdown(
+                "1. พิมพ์ข้อความ **เลือกฟอนต์** ขนาด สีตัวอักษร และสีไฮไลต์พื้นหลัง แล้วกดปุ่ม **`➕ เพิ่มข้อความลงกระดาน`**\n"
+                "2. **คลิกเมาส์ค้างที่กล่องข้อความบนหน้ากระดาษ** แล้วลากไปวางตำแหน่งใดก็ได้ตามต้องการ (ดูผลลัพธ์จริงเทียบกับ **ฝั่งขวา** ได้ทันที)"
+            )
 
-            h_c1, h_c2, h_c3 = st.columns([1.2, 4, 3.5])
-            h_c1.markdown("**สถานะไฮไลต์**")
-            h_c2.markdown("**ข้อความในบรรทัด**")
-            h_c3.markdown("**➕ ข้อความต่อท้ายในบรรทัดนี้**")
+            selected_drag_page = (
+                st.selectbox(
+                    "เลือกหน้าที่ต้องการวางข้อความ:",
+                    options=list(range(1, total_pages + 1)),
+                    format_func=lambda x: f"หน้าที่ {x}",
+                )
+                if total_pages > 1
+                else 1
+            )
 
-            with st.container(height=420, border=True):
-                for idx, g in enumerate(groups, start=1):
-                    orig_txt = g["original_text"]
+            target_page_obj = reader.pages[selected_drag_page - 1]
+            pw = float(target_page_obj.mediabox.width)
+            ph = float(target_page_obj.mediabox.height)
+            page_lines = extract_page_lines_for_canvas(target_page_obj)
 
-                    matched_sub = match_keyword_in_text(q_keyword, orig_txt)
-                    matched_quick = matched_sub is not None
-                    default_checked = matched_quick
-                    default_app_txt = q_append if matched_quick else ""
+            render_drag_and_drop_canvas(
+                page_width=pw,
+                page_height=ph,
+                page_number=selected_drag_page,
+                groups=page_groups_map[selected_drag_page],
+                lines=page_lines,
+                extra_items=st.session_state["extra_texts"],
+                available_fonts=available_fonts,
+                default_font_key=selected_font_key,
+            )
 
-                    if filter_kw.strip() and match_keyword_in_text(filter_kw, orig_txt) is None:
+            if st.session_state["extra_texts"]:
+                if st.button("🗑️ ล้างกล่องข้อความที่ลากวางทั้งหมด"):
+                    st.session_state["extra_texts"] = []
+                    st.rerun()
+
+        # -----------------------------------------------------------------------
+        # แท็บที่ 2: ไฮไลต์ข้อความ และเพิ่มข้อความต่อท้ายในบรรทัดนั้น
+        # -----------------------------------------------------------------------
+        with tab_highlight:
+            opt_col1, opt_col2, opt_col3 = st.columns([2, 2, 2])
+            selected_hl_color_name = opt_col1.selectbox(
+                "🎨 เลือกสีไฮไลต์:",
+                options=list(HIGHLIGHT_COLORS.keys()),
+                index=0,
+            )
+            selected_append_color_name = opt_col2.selectbox(
+                "🖋️ สีข้อความต่อท้าย:",
+                options=list(APPEND_TEXT_COLORS.keys()),
+                index=1,
+            )
+            highlight_append_too = opt_col3.checkbox(
+                "คลุมสีไฮไลต์ข้อความต่อท้ายด้วย",
+                value=False,
+            )
+
+            default_hl_rgb = HIGHLIGHT_COLORS[selected_hl_color_name]
+            default_append_rgb = APPEND_TEXT_COLORS[selected_append_color_name]
+
+            with st.expander("⚡ ไฮไลต์และเพิ่มข้อความต่อท้ายแบบระบุคำค้นหา (Quick Highlight & Append)", expanded=True):
+                q_col1, q_col2, q_col3 = st.columns([2, 2, 1.2])
+                q_keyword = q_col1.text_input(
+                    "คำที่ต้องการไฮไลต์:",
+                    key="q_kw_input",
+                )
+                q_append = q_col2.text_input(
+                    "ข้อความต่อท้ายในบรรทัดนั้น:",
+                    key="q_app_input",
+                )
+                q_only_sub = q_col3.checkbox(
+                    "ไฮไลต์เฉพาะคำค้น",
+                    value=True,
+                )
+
+            filter_kw = st.text_input(
+                "🔍 กรองดูเฉพาะบรรทัดที่ต้องการ (เว้นว่างเพื่อแสดงทุกบรรทัด):",
+                value="",
+            )
+
+            for pno in range(1, total_pages + 1):
+                groups = page_groups_map[pno]
+                st.markdown(f"#### 📄 หน้าที่ {pno}")
+                if not groups:
+                    st.info("หน้านี้ไม่มีบล็อกข้อความ")
+                    highlight_configs_map[pno] = []
+                    continue
+
+                hl_cfgs_for_page: List[Dict] = []
+
+                h_c1, h_c2, h_c3 = st.columns([1.2, 4, 3.5])
+                h_c1.markdown("**ไฮไลต์**")
+                h_c2.markdown("**ข้อความในบรรทัด**")
+                h_c3.markdown("**➕ ข้อความต่อท้าย**")
+
+                with st.container(height=600, border=True):
+                    for idx, g in enumerate(groups, start=1):
+                        orig_txt = g["original_text"]
+
+                        matched_sub = match_keyword_in_text(q_keyword, orig_txt)
+                        matched_quick = matched_sub is not None
+                        default_checked = matched_quick
+                        default_app_txt = q_append if matched_quick else ""
+
+                        if filter_kw.strip() and match_keyword_in_text(filter_kw, orig_txt) is None:
+                            hl_cfgs_for_page.append(
+                                {
+                                    "highlight": default_checked,
+                                    "subtext": matched_sub if (matched_quick and q_only_sub) else "",
+                                    "append_text": default_app_txt,
+                                    "hl_color": default_hl_rgb,
+                                    "append_color": default_append_rgb,
+                                    "highlight_append_too": highlight_append_too,
+                                }
+                            )
+                            continue
+
+                        r_c1, r_c2, r_c3 = st.columns([1.2, 4, 3.5])
+                        is_hl = r_c1.checkbox(
+                            f"🖍️ #{idx}",
+                            value=default_checked,
+                            key=f"hl_chk_{pno}_{idx}_{uploaded_file.name}_{q_keyword}",
+                        )
+                        r_c2.markdown(f"`{orig_txt}`")
+                        app_txt = r_c3.text_input(
+                            label=f"ต่อท้ายบรรทัดที่ {idx}",
+                            value=default_app_txt,
+                            placeholder="พิมพ์ข้อความต่อท้าย...",
+                            key=f"hl_app_{pno}_{idx}_{uploaded_file.name}_{q_keyword}_{q_append}",
+                            label_visibility="collapsed",
+                        )
+
+                        effective_hl = is_hl or bool(app_txt.strip())
+
                         hl_cfgs_for_page.append(
                             {
-                                "highlight": default_checked,
+                                "highlight": effective_hl,
                                 "subtext": matched_sub if (matched_quick and q_only_sub) else "",
-                                "append_text": default_app_txt,
+                                "append_text": app_txt,
                                 "hl_color": default_hl_rgb,
                                 "append_color": default_append_rgb,
                                 "highlight_append_too": highlight_append_too,
                             }
                         )
-                        continue
 
-                    r_c1, r_c2, r_c3 = st.columns([1.2, 4, 3.5])
-                    is_hl = r_c1.checkbox(
-                        f"🖍️ #{idx}",
-                        value=default_checked,
-                        key=f"hl_chk_{pno}_{idx}_{uploaded_file.name}_{q_keyword}",
-                    )
-                    r_c2.markdown(f"`{orig_txt}`")
-                    app_txt = r_c3.text_input(
-                        label=f"ต่อท้ายบรรทัดที่ {idx}",
-                        value=default_app_txt,
-                        placeholder="พิมพ์ข้อความต่อท้ายบรรทัดนี้...",
-                        key=f"hl_app_{pno}_{idx}_{uploaded_file.name}_{q_keyword}_{q_append}",
-                        label_visibility="collapsed",
-                    )
+                highlight_configs_map[pno] = hl_cfgs_for_page
 
-                    effective_hl = is_hl or bool(app_txt.strip())
+        # -----------------------------------------------------------------------
+        # แท็บที่ 3: แก้ไขข้อความเดิม / ค้นหาและแทนที่คำ
+        # -----------------------------------------------------------------------
+        with tab_edit_text:
+            with st.expander("🔎 ค้นหาและแทนที่ข้อความด่วน (Find & Replace)", expanded=True):
+                fr_col1, fr_col2 = st.columns(2)
+                find_str = fr_col1.text_input("คำที่ต้องการค้นหา (เช่น 12/11/2026 หรือ 2,500.00):")
+                replace_str = fr_col2.text_input("แทนที่ด้วยคำใหม่:")
 
-                    hl_cfgs_for_page.append(
-                        {
-                            "highlight": effective_hl,
-                            "subtext": matched_sub if (matched_quick and q_only_sub) else "",
-                            "append_text": app_txt,
-                            "hl_color": default_hl_rgb,
-                            "append_color": default_append_rgb,
-                            "highlight_append_too": highlight_append_too,
-                        }
-                    )
+            for pno in range(1, total_pages + 1):
+                groups = page_groups_map[pno]
+                st.markdown(f"#### 📄 หน้าที่ {pno}")
+                if not groups:
+                    edited_texts_map[pno] = []
+                    continue
 
-            highlight_configs_map[pno] = hl_cfgs_for_page
+                edited_list: List[str] = []
+                with st.container(height=620, border=True):
+                    for idx, g in enumerate(groups, start=1):
+                        orig_txt = g["original_text"]
+                        default_txt = orig_txt
+                        if find_str and find_str in default_txt:
+                            default_txt = default_txt.replace(find_str, replace_str)
 
-    # -----------------------------------------------------------------------
-    # แท็บที่ 3: แก้ไขข้อความเดิม / ค้นหาและแทนที่คำ
-    # -----------------------------------------------------------------------
-    with tab_edit_text:
-        st.subheader("✏️ แก้ไขข้อความเดิมในเอกสาร หรือค้นหาและแทนที่คำ")
-        with st.expander("🔎 ค้นหาและแทนที่ข้อความด่วน (Find & Replace)", expanded=False):
-            fr_col1, fr_col2 = st.columns(2)
-            find_str = fr_col1.text_input("คำที่ต้องการค้นหา (เช่น 12/11/2026 หรือ 2,500.00):")
-            replace_str = fr_col2.text_input("แทนที่ด้วยคำใหม่:")
+                        c_idx, c_edit = st.columns([1.2, 5])
+                        c_idx.caption(f"#{idx} (Y={g['y']:.0f})")
+                        new_val = c_edit.text_input(
+                            label=f"ข้อความจุดที่ {idx}",
+                            value=default_txt,
+                            key=f"txt_{pno}_{idx}_{uploaded_file.name}_{find_str}_{replace_str}",
+                            label_visibility="collapsed",
+                        )
+                        edited_list.append(new_val)
 
-        for pno in range(1, total_pages + 1):
-            groups = page_groups_map[pno]
-            st.markdown(f"#### 📄 หน้าที่ {pno}")
-            if not groups:
-                edited_texts_map[pno] = []
-                continue
+                edited_texts_map[pno] = edited_list
 
-            edited_list: List[str] = []
-            with st.container(height=380, border=True):
-                for idx, g in enumerate(groups, start=1):
-                    orig_txt = g["original_text"]
-                    default_txt = orig_txt
-                    if find_str and find_str in default_txt:
-                        default_txt = default_txt.replace(find_str, replace_str)
+        # -----------------------------------------------------------------------
+        # แท็บที่ 4: จัดการหน้ากระดาษ
+        # -----------------------------------------------------------------------
+        with tab_manage_pages:
+            all_page_numbers = list(range(1, total_pages + 1))
 
-                    c_idx, c_edit = st.columns([1, 5])
-                    c_idx.caption(f"#{idx} (Y={g['y']:.0f})")
-                    new_val = c_edit.text_input(
-                        label=f"ข้อความจุดที่ {idx}",
-                        value=default_txt,
-                        key=f"txt_{pno}_{idx}_{uploaded_file.name}_{find_str}_{replace_str}",
-                        label_visibility="collapsed",
-                    )
-                    edited_list.append(new_val)
+            st.markdown("##### 1) เพิ่มหน้าเปล่า (Blank Page)")
+            blank_options = [0] + all_page_numbers
+            blank_pages_after = st.multiselect(
+                "เลือกตำแหน่งที่ต้องการแทรกหน้าเปล่า:",
+                options=blank_options,
+                format_func=lambda x: "ก่อนหน้าแรกสุด (หน้า 1)" if x == 0 else f"ต่อท้ายหน้าที่ {x}",
+            )
 
-            edited_texts_map[pno] = edited_list
+            st.divider()
 
-    # -----------------------------------------------------------------------
-    # แท็บที่ 4: จัดการหน้ากระดาษ
-    # -----------------------------------------------------------------------
-    with tab_manage_pages:
-        st.subheader("📄 จัดการหน้ากระดาษ (เพิ่มหน้าเปล่า / รวมไฟล์ / ลบหน้า)")
-        all_page_numbers = list(range(1, total_pages + 1))
+            st.markdown("##### 2) แทรกหรือรวมหน้าจากไฟล์ PDF อื่น (Merge PDF)")
+            merged_pdf_file = st.file_uploader(
+                "อัปโหลดไฟล์ PDF ที่ต้องการนำมารวมต่อท้าย (ถ้ามี):",
+                type=["pdf"],
+                key="merge_uploader",
+            )
 
-        st.markdown("##### 1) เพิ่มหน้าเปล่า (Blank Page)")
-        blank_options = [0] + all_page_numbers
-        blank_pages_after = st.multiselect(
-            "เลือกตำแหน่งที่ต้องการแทรกหน้าเปล่า:",
-            options=blank_options,
-            format_func=lambda x: "ก่อนหน้าแรกสุด (หน้า 1)" if x == 0 else f"ต่อท้ายหน้าที่ {x}",
-        )
+            st.divider()
 
-        st.divider()
-
-        st.markdown("##### 2) แทรกหรือรวมหน้าจากไฟล์ PDF อื่น (Merge PDF)")
-        merged_pdf_file = st.file_uploader(
-            "อัปโหลดไฟล์ PDF ที่ต้องการนำมารวมต่อท้าย (ถ้ามี):",
-            type=["pdf"],
-            key="merge_uploader",
-        )
-
-        st.divider()
-
-        st.markdown("##### 3) ลบหน้าที่ไม่ต้องการออก")
-        pages_to_delete = st.multiselect(
-            "เลือกเลขหน้าที่ต้องการลบออก:",
-            options=all_page_numbers,
-            format_func=lambda x: f"หน้าที่ {x}",
-        )
+            st.markdown("##### 3) ลบหน้าที่ไม่ต้องการออก")
+            pages_to_delete = st.multiselect(
+                "เลือกเลขหน้าที่ต้องการลบออก:",
+                options=all_page_numbers,
+                format_func=lambda x: f"หน้าที่ {x}",
+            )
 
     # -----------------------------------------------------------------------
-    # ประมวลผลสร้างไฟล์ PDF ใหม่ตามที่ผู้ใช้ลากวาง/ไฮไลต์/ต่อท้าย/แก้ไขทั้งหมด
+    # ประมวลผลสร้างไฟล์ PDF ใหม่
     # -----------------------------------------------------------------------
     writer = PdfWriter()
     fresh_reader = PdfReader(io.BytesIO(raw_pdf_bytes))
@@ -1653,6 +1937,9 @@ def main() -> None:
                 new_texts=edited_texts_map.get(idx, []),
                 highlight_configs=highlight_configs_map.get(idx, []),
                 extra_texts=extra_for_page,
+                selected_font_key=selected_font_key,
+                detected_fonts=detected_fonts,
+                available_fonts=available_fonts,
             )
             writer.add_page(page_copy)
 
@@ -1675,39 +1962,36 @@ def main() -> None:
             PageObject.create_blank_page(width=default_width, height=default_height)
         )
 
-    col_m3.metric("จำนวนหน้าหลังแก้ไข", f"{len(writer.pages)} หน้า")
+    col_m4.metric("จำนวนหน้าหลังแก้ไข", f"{len(writer.pages)} หน้า")
 
     output_buffer = io.BytesIO()
     writer.write(output_buffer)
     output_buffer.seek(0)
     modified_pdf_bytes = output_buffer.getvalue()
 
-    st.divider()
-    st.subheader("💾 ดาวน์โหลดและดูตัวอย่างไฟล์ PDF ที่แก้ไขแล้ว")
-
-    dl_col1, dl_col2 = st.columns([2, 2])
-    original_stem = uploaded_file.name.rsplit(".", 1)[0]
-    output_filename = dl_col1.text_input(
-        "ชื่อไฟล์ PDF สำหรับดาวน์โหลด:",
-        value=f"{original_stem}_edited.pdf",
-    )
-    if not output_filename.lower().endswith(".pdf"):
-        output_filename += ".pdf"
-
-    with dl_col2:
-        st.write("")
-        st.write("")
-        st.download_button(
-            label="⬇️ ดาวน์โหลดไฟล์ PDF ที่แก้ไขแล้ว",
-            data=modified_pdf_bytes,
-            file_name=output_filename,
-            mime="application/pdf",
-            type="primary",
-            use_container_width=True,
+    with right_col:
+        st.subheader("👁️ ตัวอย่างเอกสาร PDF จริง & ดาวน์โหลด (ฝั่งขวา)")
+        dl_col1, dl_col2 = st.columns([1.3, 1.2])
+        original_stem = uploaded_file.name.rsplit(".", 1)[0]
+        output_filename = dl_col1.text_input(
+            "ชื่อไฟล์สำหรับดาวน์โหลด:",
+            value=f"{original_stem}_edited.pdf",
+            label_visibility="collapsed",
         )
+        if not output_filename.lower().endswith(".pdf"):
+            output_filename += ".pdf"
 
-    with st.expander("👁️ เปิดดูหน้าตาเอกสาร PDF จริงที่แก้ไขแล้ว (Live Preview)", expanded=True):
-        render_pdf_preview(modified_pdf_bytes, height=650)
+        with dl_col2:
+            st.download_button(
+                label="⬇️ ดาวน์โหลดไฟล์ PDF ที่แก้ไขแล้ว",
+                data=modified_pdf_bytes,
+                file_name=output_filename,
+                mime="application/pdf",
+                type="primary",
+                use_container_width=True,
+            )
+
+        render_pdf_preview(modified_pdf_bytes, height=int(default_height) + 140)
 
 
 if __name__ == "__main__":
