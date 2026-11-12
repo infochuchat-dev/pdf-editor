@@ -1186,15 +1186,131 @@ def render_drag_and_drop_canvas(
     components.html(canvas_html, height=int(page_height) + 115, scrolling=True)
 
 
-def render_pdf_preview(pdf_bytes: bytes, height: int = 650) -> None:
-    """แสดงตัวอย่างไฟล์ PDF บนหน้าเว็บ Google Chrome"""
+def render_pdf_preview(pdf_bytes: bytes, height: int = 720) -> None:
+    """
+    แสดงตัวอย่างไฟล์ PDF บนหน้าเว็บด้วย PDF.js (วาดลงบน HTML5 <canvas>)
+    แก้ปัญหา Google Chrome และ Streamlit Cloud บล็อก <iframe src="data:application/pdf;base64,...">
+    ใช้ได้ทั้งบนคอมพิวเตอร์และมือถือทุกเบราว์เซอร์
+    """
     b64_pdf = base64.b64encode(pdf_bytes).decode("utf-8")
-    pdf_iframe = (
-        f'<iframe src="data:application/pdf;base64,{b64_pdf}" '
-        f'width="100%" height="{height}" type="application/pdf" '
-        f'style="border: 1px solid #ccc; border-radius: 8px;"></iframe>'
-    )
-    st.markdown(pdf_iframe, unsafe_allow_html=True)
+    preview_html = f"""
+    <!DOCTYPE html>
+    <html>
+    <head>
+    <meta charset="utf-8" />
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+    <style>
+        body {{
+            margin: 0;
+            padding: 12px;
+            background: #525659;
+            font-family: "Leelawadee UI", Tahoma, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 16px;
+        }}
+        .top-bar {{
+            width: 100%;
+            max-width: 820px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: #323639;
+            color: #ffffff;
+            padding: 8px 16px;
+            border-radius: 6px;
+            box-sizing: border-box;
+            font-size: 13px;
+        }}
+        .open-tab-btn {{
+            background: #3b82f6;
+            color: white;
+            border: none;
+            padding: 6px 12px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 12px;
+        }}
+        .open-tab-btn:hover {{
+            background: #2563eb;
+        }}
+        #pdf-container {{
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 16px;
+            width: 100%;
+        }}
+        canvas {{
+            background: white;
+            box-shadow: 0 4px 18px rgba(0, 0, 0, 0.45);
+            border-radius: 4px;
+            max-width: 100%;
+            height: auto !important;
+        }}
+    </style>
+    </head>
+    <body>
+        <div class="top-bar">
+            <span id="page-info">กำลังโหลดตัวอย่างเอกสาร PDF...</span>
+            <button class="open-tab-btn" onclick="openInNewTab()">🔍 เปิดดู PDF ขนาดเต็มในแท็บใหม่</button>
+        </div>
+        <div id="pdf-container"></div>
+
+        <script>
+            const b64Data = "{b64_pdf}";
+            const raw = atob(b64Data);
+            const uint8Array = new Uint8Array(raw.length);
+            for (let i = 0; i < raw.length; i++) {{
+                uint8Array[i] = raw.charCodeAt(i);
+            }}
+
+            function openInNewTab() {{
+                const blob = new Blob([uint8Array], {{ type: "application/pdf" }});
+                const url = URL.createObjectURL(blob);
+                window.open(url, "_blank");
+            }}
+
+            const pdfjsLib = window["pdfjs-dist/build/pdf"];
+            pdfjsLib.GlobalWorkerOptions.workerSrc =
+                "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
+
+            pdfjsLib.getDocument({{
+                data: uint8Array,
+                cMapUrl: "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/cmaps/",
+                cMapPacked: true,
+                standardFontDataUrl: "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/standard_fonts/"
+            }}).promise.then(function(pdfDoc) {{
+                document.getElementById("page-info").innerText =
+                    "📄 ตัวอย่างเอกสาร PDF (ทั้งหมด " + pdfDoc.numPages + " หน้า)";
+                const container = document.getElementById("pdf-container");
+
+                for (let pageNum = 1; pageNum <= pdfDoc.numPages; pageNum++) {{
+                    const canvas = document.createElement("canvas");
+                    container.appendChild(canvas);
+                    pdfDoc.getPage(pageNum).then(function(page) {{
+                        const scale = 1.45;
+                        const viewport = page.getViewport({{ scale: scale }});
+                        const context = canvas.getContext("2d");
+                        canvas.height = viewport.height;
+                        canvas.width = viewport.width;
+                        page.render({{
+                            canvasContext: context,
+                            viewport: viewport
+                        }});
+                    }});
+                }}
+            }}).catch(function(err) {{
+                document.getElementById("page-info").innerText =
+                    "ไม่สามารถเรนเดอร์ตัวอย่างได้: " + err.message;
+            }});
+        </script>
+    </body>
+    </html>
+    """
+    components.html(preview_html, height=height, scrolling=True)
 
 
 def main() -> None:
