@@ -287,6 +287,33 @@ class PDFEditor:
 
         return matched_count
 
+    @staticmethod
+    def merge_pdfs(
+        pdf_paths: Iterable[Union[str, Path]],
+        output_path: Union[str, Path],
+    ) -> Path:
+        """
+        รวมไฟล์ PDF หลายๆ ไฟล์เข้าเป็นไฟล์ PDF เดียวกันตามลำดับรายการที่ระบุ
+
+        :param pdf_paths: รายการพาธของไฟล์ PDF ที่ต้องการนำมารวมกัน
+        :param output_path: พาธของไฟล์ PDF ปลายทางที่รวมเสร็จแล้ว
+        :return: Path ของไฟล์ PDF ที่บันทึกเสร็จแล้ว
+        """
+        writer = PdfWriter()
+        for p in pdf_paths:
+            path_obj = Path(p)
+            if not path_obj.exists():
+                raise FileNotFoundError(f"ไม่พบไฟล์ PDF ที่ต้องการรวม: {path_obj}")
+            reader = PdfReader(str(path_obj))
+            for page in reader.pages:
+                writer.add_page(page)
+
+        out = Path(output_path)
+        out.parent.mkdir(parents=True, exist_ok=True)
+        with open(out, "wb") as f:
+            writer.write(f)
+        return out
+
     def save(self, output_path: Union[str, Path]) -> Path:
         """
         บันทึกผลลัพธ์เป็นไฟล์ PDF ใหม่ด้วย PdfWriter

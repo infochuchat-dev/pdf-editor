@@ -1880,9 +1880,157 @@ def inject_custom_theme_css() -> None:
     )
 
 
+def render_standalone_pdf_merger() -> None:
+    """โหมดรวมไฟล์ PDF หลายไฟล์เข้าด้วยกันโดยเฉพาะ (Multi-PDF Merger Studio)"""
+    st.markdown(
+        """
+        <div class="panel-header" style="border-left-color: #8b5cf6;">
+            <span class="panel-header-title">📑 โหมดรวมไฟล์ PDF หลายไฟล์เข้าด้วยกัน (Multi-PDF Merger)</span>
+            <span class="panel-header-tag" style="background:#f3e8ff; color:#6d28d9;">รองรับหลายไฟล์ • จัดลำดับ & เลือกหน้าได้</span>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    merge_files = st.file_uploader(
+        "📂 เลือกไฟล์ PDF ทั้งหมดที่ต้องการนำมารวมกัน (กด Ctrl หรือ Shift ค้างไว้เพื่อเลือกพร้อมกันหลายไฟล์):",
+        type=["pdf"],
+        accept_multiple_files=True,
+        key="standalone_multi_merger",
+    )
+
+    if not merge_files:
+        st.markdown(
+            """
+            <div class="empty-state-card">
+                <h3 style="margin:0 0 8px 0; color:#0f172a;">📑 อัปโหลดไฟล์ PDF ตั้งแต่ 2 ไฟล์ขึ้นไปเพื่อรวมเป็นไฟล์เดียว</h3>
+                <p style="margin:0; color:#64748b;">คุณสามารถกำหนดลำดับก่อน-หลัง เลือกเฉพาะบางหน้าของแต่ละไฟล์ และดูตัวอย่าง PDF ที่รวมเสร็จแล้วด้านขวาได้ทันที</p>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+        return
+
+    m_left, m_right = st.columns([1.05, 1.0], gap="medium")
+
+    file_configs: List[Dict] = []
+
+    with m_left:
+        st.markdown(
+            """
+            <div class="panel-header">
+                <span class="panel-header-title">🔢 จัดลำดับไฟล์และเลือกหน้าที่ต้องการรวม (ฝั่งซ้าย)</span>
+                <span class="panel-header-tag">ตั้งค่าการรวมไฟล์</span>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+        st.caption("💡 ปรับตัวเลขในช่อง **ลำดับที่** เพื่อเรียงไฟล์ก่อน-หลัง และเลือกช่วงหน้าของแต่ละไฟล์ได้ตามต้องการ")
+
+        for idx, mf in enumerate(merge_files, start=1):
+            raw_bytes = mf.getvalue()
+            try:
+                r = PdfReader(io.BytesIO(raw_bytes))
+                num_p = len(r.pages)
+            except Exception as exc:
+                st.error(f"ไฟล์ {mf.name} ไม่สามารถอ่านได้: {exc}")
+                continue
+
+            with st.container(border=True):
+                c_ord, c_info, c_from, c_to = st.columns([1.1, 3.2, 1.2, 1.2])
+                order_val = c_ord.number_input(
+                    "ลำดับที่",
+                    min_value=1,
+                    max_value=len(merge_files),
+                    value=idx,
+                    step=1,
+                    key=f"m_order_{idx}_{mf.name}",
+                )
+                c_info.markdown(f"**📄 {mf.name}**\n\nจำนวนทั้งหมด `{num_p}` หน้า")
+                start_p = c_from.number_input(
+                    "เริ่มหน้า",
+                    min_value=1,
+                    max_value=num_p,
+                    value=1,
+                    step=1,
+                    key=f"m_start_{idx}_{mf.name}",
+                )
+                end_p = c_to.number_input(
+                    "ถึงหน้า",
+                    min_value=int(start_p),
+                    max_value=num_p,
+                    value=num_p,
+                    step=1,
+                    key=f"m_end_{idx}_{mf.name}",
+                )
+
+                file_configs.append(
+                    {
+                        "order": int(order_val),
+                        "original_index": idx,
+                        "name": mf.name,
+                        "bytes": raw_bytes,
+                        "start_page": int(start_p),
+                        "end_page": int(end_p),
+                    }
+                )
+
+    file_configs.sort(key=lambda x: (x["order"], x["original_index"]))
+
+    merged_writer = PdfWriter()
+    for cfg in file_configs:
+        try:
+            r = PdfReader(io.BytesIO(cfg["bytes"]))
+            for p_idx in range(cfg["start_page"] - 1, cfg["end_page"]):
+                if 0 <= p_idx < len(r.pages):
+                    merged_writer.add_page(r.pages[p_idx])
+        except Exception as exc:
+            st.warning(f"ข้ามไฟล์ {cfg['name']}: {exc}")
+
+    out_buf = io.BytesIO()
+    merged_writer.write(out_buf)
+    out_buf.seek(0)
+    merged_bytes = out_buf.getvalue()
+
+    with m_right:
+        st.markdown(
+            """
+            <div class="panel-header panel-header-right">
+                <span class="panel-header-title">👁️ ตัวอย่างไฟล์ PDF ที่รวมแล้ว & ดาวน์โหลด (ฝั่งขวา)</span>
+                <span class="panel-header-tag panel-header-tag-right">รวมทั้งหมด """
+            + f"{len(merged_writer.pages)} หน้า"
+            + """</span>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+        dl_c1, dl_c2 = st.columns([1.3, 1.2])
+        merged_filename = dl_c1.text_input(
+            "ชื่อไฟล์ที่รวมเสร็จแล้ว:",
+            value="merged_document.pdf",
+            label_visibility="collapsed",
+            key="standalone_merged_filename",
+        )
+        if not merged_filename.lower().endswith(".pdf"):
+            merged_filename += ".pdf"
+
+        with dl_c2:
+            st.download_button(
+                label=f"⬇️ ดาวน์โหลดไฟล์ที่รวมแล้ว ({len(merged_writer.pages)} หน้า)",
+                data=merged_bytes,
+                file_name=merged_filename,
+                mime="application/pdf",
+                type="primary",
+                use_container_width=True,
+                key="standalone_merged_dl_btn",
+            )
+
+        render_pdf_preview(merged_bytes, height=860)
+
+
 def main() -> None:
     st.set_page_config(
-        page_title="PDF Studio Pro - แก้ไข ลากวาง & ไฮไลต์ PDF",
+        page_title="PDF Studio Pro - แก้ไข ลากวาง ไฮไลต์ & รวมไฟล์ PDF",
         page_icon="🖍️",
         layout="wide",
     )
@@ -1893,14 +2041,15 @@ def main() -> None:
         """
         <div class="hero-banner">
             <div>
-                <div class="hero-title">🖍️ PDF Studio Pro — ระบบจัดการและแก้ไขเอกสาร PDF อัจฉริยะ</div>
+                <div class="hero-title">🖍️ PDF Studio Pro — ระบบจัดการ แก้ไข และรวมไฟล์เอกสาร PDF อัจฉริยะ</div>
                 <p class="hero-subtitle">
-                    ตรวจจับฟอนต์ไทย-อังกฤษอัตโนมัติ • ลากวางข้อความอิสระ (Drag & Drop) • ไฮไลต์พร้อมพิมพ์ข้อความต่อท้าย • ดูผลลัพธ์จริงแบบซ้าย-ขวา
+                    ตรวจจับฟอนต์ไทย-อังกฤษอัตโนมัติ • ลากวางข้อความอิสระ • ไฮไลต์พร้อมพิมพ์ต่อท้าย • รวมไฟล์ PDF หลายไฟล์เข้าด้วยกัน • ดูผลลัพธ์จริงแบบซ้าย-ขวา
                 </p>
             </div>
             <div class="hero-badges">
                 <span class="hero-badge">🔤 รองรับหลายฟอนต์ (.TTF)</span>
                 <span class="hero-badge">🖱️ ลากวางอิสระ</span>
+                <span class="hero-badge">📑 รวมไฟล์ PDF</span>
                 <span class="hero-badge">👁️ Live Preview คู่ขนาน</span>
             </div>
         </div>
@@ -1912,6 +2061,20 @@ def main() -> None:
         st.session_state["custom_uploaded_fonts"] = {}
     if "extra_texts" not in st.session_state:
         st.session_state["extra_texts"] = []
+
+    app_mode = st.radio(
+        "เลือกโหมดการทำงาน:",
+        options=[
+            "🛠️ แก้ไขเอกสาร PDF (ลากวางข้อความ / ไฮไลต์ / แก้ไขคำ / แทรกและรวมไฟล์)",
+            "📑 รวมไฟล์ PDF หลายไฟล์เข้าด้วยกัน (Multi-PDF Merger)",
+        ],
+        horizontal=True,
+        label_visibility="collapsed",
+    )
+
+    if app_mode.startswith("📑"):
+        render_standalone_pdf_merger()
+        return
 
     uploaded_file = st.file_uploader(
         "📂 อัปโหลดไฟล์เอกสาร PDF ที่ต้องการแก้ไข (ลากไฟล์มาวางที่นี่ หรือคลิกเพื่อเลือกไฟล์)",
@@ -2035,7 +2198,7 @@ def main() -> None:
                 "🖱️ 1. ลากวางข้อความ",
                 "🖍️ 2. ไฮไลต์ & ต่อท้าย",
                 "✏️ 3. แก้ไขข้อความเดิม",
-                "📄 4. จัดการหน้า",
+                "📑 4. รวมไฟล์ & จัดการหน้า",
             ]
         )
 
@@ -2233,12 +2396,78 @@ def main() -> None:
                 edited_texts_map[pno] = edited_list
 
         # -----------------------------------------------------------------------
-        # แท็บที่ 4: จัดการหน้ากระดาษ
+        # แท็บที่ 4: จัดการหน้ากระดาษ & รวมไฟล์ PDF
         # -----------------------------------------------------------------------
         with tab_manage_pages:
             all_page_numbers = list(range(1, total_pages + 1))
 
-            st.markdown("##### 1) เพิ่มหน้าเปล่า (Blank Page)")
+            st.markdown("##### 📑 1) รวมไฟล์ PDF อื่นเข้ากับเอกสารนี้ (Merge Multiple PDFs)")
+            merged_pdf_files = st.file_uploader(
+                "อัปโหลดไฟล์ PDF ที่ต้องการนำมารวม (เลือกพร้อมกันได้หลายไฟล์):",
+                type=["pdf"],
+                accept_multiple_files=True,
+                key="merge_uploader",
+            )
+
+            merge_configs_by_pos: Dict[int, List[Dict]] = {}
+            if merged_pdf_files:
+                st.caption("ตั้งค่าตำแหน่งแทรกและช่วงหน้าของแต่ละไฟล์ที่ต้องการนำมารวม:")
+                pos_options = [0] + all_page_numbers
+                for m_idx, m_file in enumerate(merged_pdf_files, start=1):
+                    m_bytes = m_file.getvalue()
+                    try:
+                        m_reader_info = PdfReader(io.BytesIO(m_bytes))
+                        m_total = len(m_reader_info.pages)
+                    except Exception as exc:
+                        st.error(f"ไม่สามารถอ่านไฟล์ {m_file.name}: {exc}")
+                        continue
+
+                    with st.container(border=True):
+                        st.markdown(f"**{m_idx}. 📄 {m_file.name}** (`{m_total}` หน้า)")
+                        mc1, mc2, mc3 = st.columns([2.2, 1.1, 1.1])
+                        insert_pos = mc1.selectbox(
+                            "ตำแหน่งที่ต้องการวาง:",
+                            options=pos_options,
+                            index=len(pos_options) - 1,
+                            format_func=lambda x: (
+                                "⬆️ ไว้หน้าแรกสุด (ก่อนหน้า 1)"
+                                if x == 0
+                                else (
+                                    f"⬇️ ต่อท้ายเอกสาร (หลังหน้า {total_pages})"
+                                    if x == total_pages
+                                    else f"📌 แทรกต่อจากหน้าที่ {x}"
+                                )
+                            ),
+                            key=f"m_pos_{m_idx}_{m_file.name}",
+                        )
+                        m_from = mc2.number_input(
+                            "เริ่มหน้า:",
+                            min_value=1,
+                            max_value=m_total,
+                            value=1,
+                            step=1,
+                            key=f"m_from_{m_idx}_{m_file.name}",
+                        )
+                        m_to = mc3.number_input(
+                            "ถึงหน้า:",
+                            min_value=int(m_from),
+                            max_value=m_total,
+                            value=m_total,
+                            step=1,
+                            key=f"m_to_{m_idx}_{m_file.name}",
+                        )
+                        merge_configs_by_pos.setdefault(int(insert_pos), []).append(
+                            {
+                                "name": m_file.name,
+                                "bytes": m_bytes,
+                                "from_page": int(m_from),
+                                "to_page": int(m_to),
+                            }
+                        )
+
+            st.divider()
+
+            st.markdown("##### ➕ 2) เพิ่มหน้าเปล่า (Blank Page)")
             blank_options = [0] + all_page_numbers
             blank_pages_after = st.multiselect(
                 "เลือกตำแหน่งที่ต้องการแทรกหน้าเปล่า:",
@@ -2248,16 +2477,7 @@ def main() -> None:
 
             st.divider()
 
-            st.markdown("##### 2) แทรกหรือรวมหน้าจากไฟล์ PDF อื่น (Merge PDF)")
-            merged_pdf_file = st.file_uploader(
-                "อัปโหลดไฟล์ PDF ที่ต้องการนำมารวมต่อท้าย (ถ้ามี):",
-                type=["pdf"],
-                key="merge_uploader",
-            )
-
-            st.divider()
-
-            st.markdown("##### 3) ลบหน้าที่ไม่ต้องการออก")
+            st.markdown("##### 🗑️ 3) ลบหน้าที่ไม่ต้องการออก")
             pages_to_delete = st.multiselect(
                 "เลือกเลขหน้าที่ต้องการลบออก:",
                 options=all_page_numbers,
@@ -2280,10 +2500,21 @@ def main() -> None:
     delete_set = set(pages_to_delete)
     blank_set = set(blank_pages_after)
 
+    def _append_merged_at(position_idx: int) -> None:
+        for cfg in merge_configs_by_pos.get(position_idx, []):
+            try:
+                m_reader = PdfReader(io.BytesIO(cfg["bytes"]))
+                for p_i in range(cfg["from_page"] - 1, cfg["to_page"]):
+                    if 0 <= p_i < len(m_reader.pages):
+                        writer.add_page(m_reader.pages[p_i])
+            except Exception as exc:
+                st.warning(f"ไม่สามารถรวมไฟล์ {cfg['name']}: {exc}")
+
     if 0 in blank_set:
         writer.add_page(
             PageObject.create_blank_page(width=default_width, height=default_height)
         )
+    _append_merged_at(0)
 
     for idx in range(1, total_pages + 1):
         if idx not in delete_set:
@@ -2310,14 +2541,7 @@ def main() -> None:
             writer.add_page(
                 PageObject.create_blank_page(width=default_width, height=default_height)
             )
-
-    if merged_pdf_file is not None:
-        try:
-            merge_reader = PdfReader(merged_pdf_file)
-            for m_page in merge_reader.pages:
-                writer.add_page(m_page)
-        except Exception as exc:
-            st.warning(f"ไม่สามารถรวมไฟล์ PDF ที่สองได้: {exc}")
+        _append_merged_at(idx)
 
     if len(writer.pages) == 0:
         st.warning("⚠️ คุณเลือกลบทุกหน้าในเอกสาร ระบบจึงสร้างหน้าเปล่า 1 หน้าไว้ให้แทน")
