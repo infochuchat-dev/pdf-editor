@@ -1111,55 +1111,96 @@ def render_drag_and_drop_canvas(
     <html>
     <head>
     <meta charset="utf-8" />
+    <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
+        * {{
+            box-sizing: border-box;
+        }}
         body {{
             margin: 0;
-            padding: 8px;
-            font-family: "Leelawadee UI", Tahoma, sans-serif;
-            background: #f4f6f9;
+            padding: 10px;
+            font-family: 'Sarabun', "Leelawadee UI", Tahoma, sans-serif;
+            background: linear-gradient(145deg, #f8fafc 0%, #eff6ff 100%);
             user-select: none;
         }}
         .toolbar {{
             display: flex;
             flex-wrap: wrap;
-            gap: 8px;
+            gap: 10px;
             align-items: center;
-            background: #ffffff;
-            padding: 10px 14px;
-            border-radius: 8px;
-            border: 1px solid #dce1e7;
-            margin-bottom: 10px;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+            background: rgba(255, 255, 255, 0.96);
+            padding: 12px 16px;
+            border-radius: 12px;
+            border: 1px solid #e2e8f0;
+            margin-bottom: 12px;
+            box-shadow: 0 4px 15px rgba(15, 23, 42, 0.06);
         }}
         .toolbar input[type="text"] {{
-            padding: 6px 10px;
-            border: 1px solid #cbd5e1;
-            border-radius: 6px;
+            padding: 8px 12px;
+            border: 1.5px solid #cbd5e1;
+            border-radius: 8px;
             font-size: 14px;
-            min-width: 180px;
+            font-family: inherit;
+            min-width: 190px;
+            outline: none;
+            transition: all 0.2s;
+        }}
+        .toolbar input[type="text"]:focus {{
+            border-color: #3b82f6;
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
         }}
         .toolbar select, .toolbar input[type="number"] {{
-            padding: 6px 8px;
-            border: 1px solid #cbd5e1;
-            border-radius: 6px;
+            padding: 7px 10px;
+            border: 1.5px solid #cbd5e1;
+            border-radius: 8px;
             font-size: 13px;
+            font-family: inherit;
+            background: #f8fafc;
+            outline: none;
+            transition: all 0.2s;
+        }}
+        .toolbar select:hover, .toolbar input[type="number"]:hover {{
+            border-color: #94a3b8;
+            background: #ffffff;
         }}
         .btn {{
-            padding: 7px 13px;
+            padding: 8px 15px;
             border: none;
-            border-radius: 6px;
+            border-radius: 8px;
             font-size: 13px;
+            font-family: inherit;
             font-weight: 600;
             cursor: pointer;
-            transition: 0.15s;
+            transition: all 0.2s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
         }}
-        .btn-add {{ background: #2563eb; color: white; }}
-        .btn-add:hover {{ background: #1d4ed8; }}
-        .btn-save {{ background: #16a34a; color: white; }}
-        .btn-save:hover {{ background: #15803d; }}
+        .btn-add {{
+            background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+            color: white;
+            box-shadow: 0 2px 8px rgba(37, 99, 235, 0.25);
+        }}
+        .btn-add:hover {{
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(37, 99, 235, 0.35);
+        }}
+        .btn-save {{
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            color: white;
+            box-shadow: 0 2px 8px rgba(16, 185, 129, 0.25);
+        }}
+        .btn-save:hover {{
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(16, 185, 129, 0.35);
+        }}
         .status-badge {{
-            font-size: 12px;
-            color: #475569;
+            font-size: 12.5px;
+            color: #334155;
+            background: #f1f5f9;
+            padding: 6px 12px;
+            border-radius: 6px;
+            border-left: 3px solid #3b82f6;
             width: 100%;
             margin-top: 2px;
         }}
@@ -1167,17 +1208,21 @@ def render_drag_and_drop_canvas(
             display: flex;
             justify-content: center;
             overflow: auto;
-            padding: 10px;
-            background: #e2e8f0;
-            border-radius: 8px;
-            border: 1px solid #cbd5e1;
+            padding: 16px;
+            background: #1e293b;
+            background-image: radial-gradient(#334155 1px, transparent 1px);
+            background-size: 18px 18px;
+            border-radius: 12px;
+            border: 1px solid #334155;
+            box-shadow: inset 0 2px 10px rgba(0,0,0,0.35);
         }}
         .pdf-stage {{
             position: relative;
             width: {page_width:.1f}px;
             height: {page_height:.1f}px;
             background: #ffffff;
-            box-shadow: 0 4px 16px rgba(0,0,0,0.15);
+            border-radius: 3px;
+            box-shadow: 0 12px 32px rgba(0, 0, 0, 0.45);
             overflow: hidden;
         }}
         .bg-svg {{
@@ -1193,29 +1238,36 @@ def render_drag_and_drop_canvas(
             position: absolute;
             z-index: 10;
             cursor: grab;
-            padding: 1px 4px;
+            padding: 2px 6px;
             border: 1.5px dashed #2563eb;
-            border-radius: 4px;
+            border-radius: 5px;
             white-space: nowrap;
             line-height: 1.15;
-            box-shadow: 0 2px 6px rgba(37,99,235,0.18);
+            box-shadow: 0 3px 8px rgba(37, 99, 235, 0.22);
+            transition: box-shadow 0.15s;
+        }}
+        .drag-item:hover {{
+            border-color: #1d4ed8;
+            box-shadow: 0 4px 12px rgba(37, 99, 235, 0.32);
         }}
         .drag-item:active {{
             cursor: grabbing;
-            border: 2px solid #dc2626;
-            box-shadow: 0 4px 12px rgba(220,38,38,0.3);
+            border: 2px solid #e11d48;
+            box-shadow: 0 6px 16px rgba(225, 29, 72, 0.35);
         }}
         .drag-item .coord-tip {{
             position: absolute;
-            top: -19px;
+            top: -21px;
             left: 0;
-            background: #1e293b;
-            color: #fff;
+            background: #0f172a;
+            color: #f8fafc;
             font-size: 10px;
-            padding: 1px 5px;
-            border-radius: 3px;
+            font-weight: 500;
+            padding: 2px 6px;
+            border-radius: 4px;
             pointer-events: none;
-            opacity: 0.9;
+            opacity: 0.92;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
         }}
         .drag-item .del-btn {{
             margin-left: 6px;
@@ -1223,13 +1275,18 @@ def render_drag_and_drop_canvas(
             color: white;
             border: none;
             border-radius: 50%;
-            width: 16px;
-            height: 16px;
+            width: 17px;
+            height: 17px;
             font-size: 11px;
-            line-height: 14px;
+            line-height: 15px;
             text-align: center;
             cursor: pointer;
             padding: 0;
+            transition: 0.15s;
+        }}
+        .drag-item .del-btn:hover {{
+            background: #dc2626;
+            transform: scale(1.1);
         }}
     </style>
     </head>
@@ -1437,52 +1494,83 @@ def render_pdf_preview(pdf_bytes: bytes, height: int = 720) -> None:
     <html>
     <head>
     <meta charset="utf-8" />
+    <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;500;600;700&display=swap" rel="stylesheet">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
     <style>
+        * {{
+            box-sizing: border-box;
+        }}
         body {{
             margin: 0;
-            padding: 12px;
-            background: #525659;
-            font-family: "Leelawadee UI", Tahoma, sans-serif;
+            padding: 14px;
+            background: #0f172a;
+            background-image: radial-gradient(#1e293b 1px, transparent 1px);
+            background-size: 18px 18px;
+            font-family: 'Sarabun', "Leelawadee UI", Tahoma, sans-serif;
             display: flex;
             flex-direction: column;
             align-items: center;
             gap: 16px;
+            border-radius: 14px;
         }}
         .top-bar {{
             width: 100%;
-            max-width: 820px;
             display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
             justify-content: space-between;
             align-items: center;
-            background: #323639;
-            color: #ffffff;
-            padding: 8px 16px;
-            border-radius: 6px;
-            box-sizing: border-box;
-            font-size: 13px;
+            background: rgba(30, 41, 59, 0.92);
+            backdrop-filter: blur(8px);
+            color: #f8fafc;
+            padding: 10px 16px;
+            border-radius: 10px;
+            border: 1px solid rgba(148, 163, 184, 0.2);
+            font-size: 13.5px;
+            font-weight: 500;
+            box-shadow: 0 4px 14px rgba(0, 0, 0, 0.25);
+        }}
+        .badge-live {{
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }}
+        .dot-live {{
+            width: 8px;
+            height: 8px;
+            background: #22c55e;
+            border-radius: 50%;
+            box-shadow: 0 0 8px #22c55e;
         }}
         .open-tab-btn {{
-            background: #3b82f6;
+            background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
             color: white;
             border: none;
-            padding: 6px 12px;
-            border-radius: 5px;
+            padding: 7px 14px;
+            border-radius: 7px;
             cursor: pointer;
+            font-family: inherit;
             font-weight: 600;
-            font-size: 12px;
+            font-size: 12.5px;
+            transition: all 0.2s ease;
+            box-shadow: 0 2px 8px rgba(37, 99, 235, 0.35);
         }}
-        .open-tab-btn:hover {{ background: #2563eb; }}
+        .open-tab-btn:hover {{
+            background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(37, 99, 235, 0.45);
+        }}
         #pdf-container {{
             display: flex;
             flex-direction: column;
             align-items: center;
-            gap: 16px;
+            gap: 20px;
             width: 100%;
+            padding-bottom: 12px;
         }}
         canvas {{
             background: white;
-            box-shadow: 0 4px 18px rgba(0, 0, 0, 0.45);
+            box-shadow: 0 12px 32px rgba(0, 0, 0, 0.55);
             border-radius: 4px;
             max-width: 100%;
             height: auto !important;
@@ -1491,7 +1579,7 @@ def render_pdf_preview(pdf_bytes: bytes, height: int = 720) -> None:
     </head>
     <body>
         <div class="top-bar">
-            <span id="page-info">กำลังโหลดตัวอย่างเอกสาร PDF...</span>
+            <span class="badge-live"><span class="dot-live"></span><span id="page-info">กำลังโหลดตัวอย่างเอกสาร PDF...</span></span>
             <button class="open-tab-btn" onclick="openInNewTab()">🔍 เปิดดู PDF ขนาดเต็มในแท็บใหม่</button>
         </div>
         <div id="pdf-container"></div>
@@ -1521,7 +1609,7 @@ def render_pdf_preview(pdf_bytes: bytes, height: int = 720) -> None:
                 standardFontDataUrl: "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/standard_fonts/"
             }}).promise.then(function(pdfDoc) {{
                 document.getElementById("page-info").innerText =
-                    "📄 ตัวอย่างเอกสาร PDF (ทั้งหมด " + pdfDoc.numPages + " หน้า)";
+                    "แสดงผลจริง (Live Preview) • ทั้งหมด " + pdfDoc.numPages + " หน้า";
                 const container = document.getElementById("pdf-container");
 
                 for (let pageNum = 1; pageNum <= pdfDoc.numPages; pageNum++) {{
@@ -1550,17 +1638,274 @@ def render_pdf_preview(pdf_bytes: bytes, height: int = 720) -> None:
     components.html(preview_html, height=height, scrolling=True)
 
 
+def inject_custom_theme_css() -> None:
+    """ตกแต่งหน้าเว็บ Streamlit ให้สวยงาม ทันสมัย ด้วยโทนสีและการ์ดระดับมืออาชีพ"""
+    st.markdown(
+        """
+        <style>
+        @import url('https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700&display=swap');
+
+        html, body, [class*="css"] {
+            font-family: 'Sarabun', 'Leelawadee UI', Tahoma, sans-serif;
+        }
+
+        /* พื้นหลังหลักของแอป */
+        .stApp {
+            background: linear-gradient(180deg, #f8fafc 0%, #f1f5f9 100%);
+        }
+
+        .block-container {
+            padding-top: 1.5rem !important;
+            padding-bottom: 2.5rem !important;
+            max-width: 97% !important;
+        }
+
+        /* แบนเนอร์ส่วนหัว (Hero Header) */
+        .hero-banner {
+            background: linear-gradient(135deg, #0f172a 0%, #1e3a8a 55%, #2563eb 100%);
+            color: #ffffff;
+            padding: 24px 30px;
+            border-radius: 18px;
+            box-shadow: 0 10px 28px rgba(30, 58, 138, 0.22);
+            margin-bottom: 20px;
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: space-between;
+            align-items: center;
+            gap: 16px;
+            border: 1px solid rgba(255, 255, 255, 0.12);
+        }
+        .hero-title {
+            font-size: 1.75rem;
+            font-weight: 700;
+            margin: 0 0 6px 0;
+            letter-spacing: -0.01em;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .hero-subtitle {
+            font-size: 0.98rem;
+            color: #dbeafe;
+            margin: 0;
+            font-weight: 400;
+            line-height: 1.5;
+        }
+        .hero-badges {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+        .hero-badge {
+            background: rgba(255, 255, 255, 0.14);
+            backdrop-filter: blur(6px);
+            border: 1px solid rgba(255, 255, 255, 0.24);
+            color: #f8fafc;
+            padding: 6px 13px;
+            border-radius: 999px;
+            font-size: 0.82rem;
+            font-weight: 600;
+            white-space: nowrap;
+        }
+
+        /* การ์ดแสดงข้อมูลสถิติ (Metric Cards) */
+        div[data-testid="stMetric"] {
+            background: #ffffff;
+            padding: 14px 18px;
+            border-radius: 14px;
+            border: 1px solid #e2e8f0;
+            border-left: 4px solid #2563eb;
+            box-shadow: 0 4px 14px rgba(15, 23, 42, 0.04);
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+        div[data-testid="stMetric"]:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(37, 99, 235, 0.09);
+        }
+        div[data-testid="stMetricLabel"] {
+            font-size: 0.85rem !important;
+            color: #64748b !important;
+            font-weight: 600 !important;
+        }
+        div[data-testid="stMetricValue"] {
+            font-size: 1.25rem !important;
+            color: #0f172a !important;
+            font-weight: 700 !important;
+        }
+
+        /* กล่องอัปโหลดไฟล์ PDF */
+        div[data-testid="stFileUploader"] {
+            background: #ffffff;
+            padding: 14px 18px;
+            border-radius: 14px;
+            border: 1.5px dashed #93c5fd;
+            box-shadow: 0 4px 12px rgba(37, 99, 235, 0.04);
+        }
+
+        /* แถบหัวข้อของฝั่งซ้ายและฝั่งขวา */
+        .panel-header {
+            background: #ffffff;
+            padding: 12px 18px;
+            border-radius: 12px;
+            border: 1px solid #e2e8f0;
+            border-left: 5px solid #2563eb;
+            margin-bottom: 12px;
+            box-shadow: 0 2px 10px rgba(15, 23, 42, 0.04);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .panel-header-right {
+            border-left-color: #10b981;
+        }
+        .panel-header-title {
+            font-size: 1.12rem;
+            font-weight: 700;
+            color: #0f172a;
+            margin: 0;
+        }
+        .panel-header-tag {
+            font-size: 0.78rem;
+            font-weight: 600;
+            padding: 4px 10px;
+            border-radius: 999px;
+            background: #eff6ff;
+            color: #1d4ed8;
+        }
+        .panel-header-tag-right {
+            background: #ecfdf5;
+            color: #047857;
+        }
+
+        /* ปรับแต่งปุ่ม Tabs ให้ดูเหมือน Segmented Pill Bar */
+        div[data-baseweb="tab-list"] {
+            background: #e2e8f0;
+            padding: 5px;
+            border-radius: 12px;
+            gap: 6px;
+        }
+        button[data-baseweb="tab"] {
+            border-radius: 9px !important;
+            padding: 8px 14px !important;
+            font-weight: 600 !important;
+            font-size: 0.9rem !important;
+            color: #475569 !important;
+            border: none !important;
+            background: transparent !important;
+            transition: all 0.2s ease !important;
+        }
+        button[data-baseweb="tab"][aria-selected="true"] {
+            background: #ffffff !important;
+            color: #1d4ed8 !important;
+            box-shadow: 0 2px 8px rgba(15, 23, 42, 0.1) !important;
+        }
+        div[data-baseweb="tab-highlight"] {
+            display: none !important;
+        }
+
+        /* ปุ่มดาวน์โหลดหลัก */
+        div[data-testid="stDownloadButton"] button {
+            background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%) !important;
+            color: #ffffff !important;
+            border: none !important;
+            border-radius: 10px !important;
+            padding: 0.55rem 1.2rem !important;
+            font-weight: 700 !important;
+            font-size: 0.96rem !important;
+            box-shadow: 0 4px 14px rgba(37, 99, 235, 0.28) !important;
+            transition: all 0.2s ease !important;
+        }
+        div[data-testid="stDownloadButton"] button:hover {
+            transform: translateY(-1px) !important;
+            box-shadow: 0 6px 20px rgba(37, 99, 235, 0.38) !important;
+            background: linear-gradient(135deg, #1d4ed8 0%, #1e40af 100%) !important;
+        }
+
+        /* Expander สวยงาม */
+        details[data-testid="stExpander"] {
+            background: #ffffff;
+            border-radius: 12px !important;
+            border: 1px solid #e2e8f0 !important;
+            box-shadow: 0 2px 8px rgba(15, 23, 42, 0.03);
+            margin-bottom: 12px;
+        }
+
+        /* การ์ดต้อนรับตอนยังไม่อัปโหลดไฟล์ */
+        .empty-state-card {
+            background: #ffffff;
+            border-radius: 16px;
+            border: 1px solid #e2e8f0;
+            padding: 32px 28px;
+            text-align: center;
+            box-shadow: 0 8px 24px rgba(15, 23, 42, 0.05);
+            margin-top: 12px;
+        }
+        .feature-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+            gap: 14px;
+            margin-top: 22px;
+            text-align: left;
+        }
+        .feature-item {
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 12px;
+            padding: 16px;
+        }
+        .feature-item h4 {
+            margin: 0 0 6px 0;
+            color: #1e3a8a;
+            font-size: 1rem;
+        }
+        .feature-item p {
+            margin: 0;
+            color: #475569;
+            font-size: 0.88rem;
+            line-height: 1.45;
+        }
+
+        /* ซ่อนช่อง Bridge Input */
+        div[data-testid="stTextInput"]:has(input[aria-label="DRAG_BRIDGE_JSON"]) {
+            position: fixed;
+            left: -9999px;
+            width: 1px;
+            height: 1px;
+            overflow: hidden;
+            opacity: 0;
+        }
+        </style>
+        """,
+        unsafe_allow_html=True,
+    )
+
+
 def main() -> None:
     st.set_page_config(
-        page_title="PDF Editor - รองรับหลายฟอนต์ & ลากวางข้อความ",
+        page_title="PDF Studio Pro - แก้ไข ลากวาง & ไฮไลต์ PDF",
         page_icon="🖍️",
         layout="wide",
     )
 
-    st.title("🖍️ โปรแกรมจัดการไฟล์ PDF: รองรับหลายฟอนต์, ลากวางข้อความ & ไฮไลต์")
-    st.write(
-        "อัปโหลดไฟล์ PDF เพื่อ **ตรวจจับฟอนต์อัตโนมัติ**, **เลือกฟอนต์ได้หลากหลาย (หรืออัปโหลดฟอนต์ .ttf เพิ่มเติม)**, "
-        "**ลากวางข้อความบนหน้ากระดาษ**, **ไฮไลต์พร้อมเพิ่มข้อความต่อท้าย** และ **แก้ไขข้อความเดิม**"
+    inject_custom_theme_css()
+
+    st.markdown(
+        """
+        <div class="hero-banner">
+            <div>
+                <div class="hero-title">🖍️ PDF Studio Pro — ระบบจัดการและแก้ไขเอกสาร PDF อัจฉริยะ</div>
+                <p class="hero-subtitle">
+                    ตรวจจับฟอนต์ไทย-อังกฤษอัตโนมัติ • ลากวางข้อความอิสระ (Drag & Drop) • ไฮไลต์พร้อมพิมพ์ข้อความต่อท้าย • ดูผลลัพธ์จริงแบบซ้าย-ขวา
+                </p>
+            </div>
+            <div class="hero-badges">
+                <span class="hero-badge">🔤 รองรับหลายฟอนต์ (.TTF)</span>
+                <span class="hero-badge">🖱️ ลากวางอิสระ</span>
+                <span class="hero-badge">👁️ Live Preview คู่ขนาน</span>
+            </div>
+        </div>
+        """,
+        unsafe_allow_html=True,
     )
 
     if "custom_uploaded_fonts" not in st.session_state:
@@ -1569,12 +1914,38 @@ def main() -> None:
         st.session_state["extra_texts"] = []
 
     uploaded_file = st.file_uploader(
-        "📂 เลือกไฟล์ PDF ที่ต้องการใช้งาน",
+        "📂 อัปโหลดไฟล์เอกสาร PDF ที่ต้องการแก้ไข (ลากไฟล์มาวางที่นี่ หรือคลิกเพื่อเลือกไฟล์)",
         type=["pdf"],
     )
 
     if uploaded_file is None:
-        st.info("👆 กรุณาอัปโหลดไฟล์ PDF เพื่อเริ่มต้นใช้งาน")
+        st.markdown(
+            """
+            <div class="empty-state-card">
+                <h3 style="margin:0 0 8px 0; color:#0f172a;">👆 เริ่มต้นด้วยการอัปโหลดไฟล์ PDF ด้านบน</h3>
+                <p style="margin:0; color:#64748b;">รองรับเอกสารภาษาไทยและภาษาอังกฤษ เช่น ใบเสนอราคา ใบแจ้งหนี้ สัญญา และเอกสารราชการ</p>
+                <div class="feature-grid">
+                    <div class="feature-item">
+                        <h4>🖱️ 1. ลากวางข้อความอิสระ</h4>
+                        <p>เพิ่มกล่องข้อความใหม่ เลือกฟอนต์ ขนาด สี และใช้เมาส์ลากไปวางตรงไหนของหน้ากระดาษก็ได้</p>
+                    </div>
+                    <div class="feature-item">
+                        <h4>🖍️ 2. ไฮไลต์ & พิมพ์ต่อท้าย</h4>
+                        <p>เน้นข้อความสำคัญด้วยสีไฮไลต์ พร้อมพิมพ์หมายเหตุต่อท้ายในบรรทัดเดียวกันได้ทันที</p>
+                    </div>
+                    <div class="feature-item">
+                        <h4>✏️ 3. แก้ไขข้อความเดิม</h4>
+                        <p>แก้คำผิด ตัวเลข วันที่ หรือค้นหาและแทนที่คำในเอกสารโดยรักษาตำแหน่งและฟอนต์เดิม</p>
+                    </div>
+                    <div class="feature-item">
+                        <h4>🔤 4. รองรับฟอนต์หลากหลาย</h4>
+                        <p>มาพร้อมฟอนต์ไทยมาตรฐาน (CSChatThai, TH Sarabun, Leelawadee, Tahoma) และอัปโหลด .ttf เพิ่มได้</p>
+                    </div>
+                </div>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
         return
 
     raw_pdf_bytes = uploaded_file.getvalue()
@@ -1634,22 +2005,6 @@ def main() -> None:
                 else:
                     st.error("ไฟล์ .ttf นี้ไม่รองรับตาราง Unicode มาตรฐาน")
 
-    # ช่องซิงค์ข้อมูลพิกัดจากกระดานลากวาง
-    st.markdown(
-        """
-        <style>
-        div[data-testid="stTextInput"]:has(input[aria-label="DRAG_BRIDGE_JSON"]) {
-            position: fixed;
-            left: -9999px;
-            width: 1px;
-            height: 1px;
-            overflow: hidden;
-            opacity: 0;
-        }
-        </style>
-        """,
-        unsafe_allow_html=True,
-    )
     bridge_val = st.text_input(
         "DRAG_BRIDGE_JSON",
         value=json.dumps(st.session_state["extra_texts"], ensure_ascii=False),
@@ -1666,7 +2021,15 @@ def main() -> None:
     left_col, right_col = st.columns([1.05, 1.0], gap="medium")
 
     with left_col:
-        st.subheader("🛠️ พื้นที่แก้ไขเอกสาร PDF (ฝั่งซ้าย)")
+        st.markdown(
+            """
+            <div class="panel-header">
+                <span class="panel-header-title">🛠️ พื้นที่แก้ไขเอกสาร PDF (Editor Studio)</span>
+                <span class="panel-header-tag">ฝั่งซ้าย • แก้ไขข้อมูล</span>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
         tab_drag, tab_highlight, tab_edit_text, tab_manage_pages = st.tabs(
             [
                 "🖱️ 1. ลากวางข้อความ",
@@ -1970,7 +2333,15 @@ def main() -> None:
     modified_pdf_bytes = output_buffer.getvalue()
 
     with right_col:
-        st.subheader("👁️ ตัวอย่างเอกสาร PDF จริง & ดาวน์โหลด (ฝั่งขวา)")
+        st.markdown(
+            """
+            <div class="panel-header panel-header-right">
+                <span class="panel-header-title">👁️ ตัวอย่างเอกสาร PDF จริง & ดาวน์โหลด</span>
+                <span class="panel-header-tag panel-header-tag-right">ฝั่งขวา • อัปเดตอัตโนมัติ</span>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
         dl_col1, dl_col2 = st.columns([1.3, 1.2])
         original_stem = uploaded_file.name.rsplit(".", 1)[0]
         output_filename = dl_col1.text_input(
@@ -1991,7 +2362,7 @@ def main() -> None:
                 use_container_width=True,
             )
 
-        render_pdf_preview(modified_pdf_bytes, height=int(default_height) + 140)
+        render_pdf_preview(modified_pdf_bytes, height=int(default_height) + 150)
 
 
 if __name__ == "__main__":
